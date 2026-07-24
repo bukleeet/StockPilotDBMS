@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { ReactNode, Dispatch, SetStateAction } from "react";
 import {
   LayoutDashboard,
@@ -23,6 +23,16 @@ import {
   RefreshCw,
   ClipboardList,
   Check,
+  Download,
+  Upload,
+  RotateCcw,
+  Settings,
+  Shield,
+  Users,
+  Heart,
+  Tag,
+  Cloud,
+  CloudOff,
 } from "lucide-react";
 import {
   AreaChart,
@@ -40,199 +50,51 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// ─── Types ─────────────────────────────────────────────────────────────
-type View = "dashboard" | "inventory" | "supplies" | "sales" | "waste" | "calculator" | "reports";
-
-interface InvItem {
-  id: string;
-  name: string;
-  category: string;
-  quantity: number;
-  unit: string;
-  unitCost: number;
-  reorderPoint: number;
-  dateStocked: string;
-  expiryDate: string;
-}
-
-interface MenuItem {
-  id: string;
-  name: string;
-  category: string;
-  sellingPrice: number;
-  ingredients: { item: string; qty: number; unit: string }[];
-}
-
-interface SaleRec {
-  id: string;
-  date: string;
-  menuItemId: string;
-  item: string;
-  category: string;
-  quantitySold: number;
-  unitPrice: number;
-}
-
-interface WasteRec {
-  id: string;
-  date: string;
-  menuItem: string;
-  servingsWasted: number;
-  ingredients: { name: string; qty: number; unit: string; cost: number }[];
-  estimatedLoss: number;
-}
-
-interface SupplyReq {
-  id: string;
-  item: string;
-  quantity: number | null;
-  unit: string;
-}
-
-type Rec = {
-  type: "increase" | "reduce" | "warning" | "insight";
-  title: string;
-  detail: string;
-  priority: "high" | "medium" | "low";
-};
-
-// ─── Constants ──────────────────────────────────────────────────────────
-const TODAY = "2026-07-22";
-const CHART_COLORS = ["#6366f1", "#f59e0b", "#10b981", "#f43f5e", "#8b5cf6", "#06b6d4"];
-const UNITS = ["pieces", "grams", "kilograms", "milligrams", "milliliters", "liters"];
-
-const MENU_ITEMS: MenuItem[] = [
-  {
-    id: "m1", name: "Menudo", category: "Main Course", sellingPrice: 180,
-    ingredients: [
-      { item: "Beef", qty: 0.2, unit: "kg" },
-      { item: "Potatoes", qty: 0.15, unit: "kg" },
-      { item: "Carrots", qty: 0.15, unit: "kg" },
-      { item: "Tomatoes", qty: 0.1, unit: "kg" },
-    ],
-  },
-  {
-    id: "m2", name: "Chicken Adobo", category: "Main Course", sellingPrice: 150,
-    ingredients: [
-      { item: "Chicken", qty: 0.3, unit: "kg" },
-      { item: "Garlic", qty: 0.02, unit: "kg" },
-    ],
-  },
-  {
-    id: "m3", name: "Sinigang na Baboy", category: "Main Course", sellingPrice: 165,
-    ingredients: [
-      { item: "Pork", qty: 0.25, unit: "kg" },
-      { item: "Tomatoes", qty: 0.1, unit: "kg" },
-    ],
-  },
-  {
-    id: "m4", name: "Grilled Chicken", category: "Main Course", sellingPrice: 145,
-    ingredients: [{ item: "Chicken", qty: 0.4, unit: "kg" }],
-  },
-  {
-    id: "m5", name: "Lechon Kawali", category: "Main Course", sellingPrice: 175,
-    ingredients: [{ item: "Pork", qty: 0.35, unit: "kg" }],
-  },
-  {
-    id: "m6", name: "Kare-Kare", category: "Main Course", sellingPrice: 220,
-    ingredients: [{ item: "Beef", qty: 0.3, unit: "kg" }],
-  },
-  {
-    id: "m7", name: "Steamed Vegetables", category: "Sides", sellingPrice: 80,
-    ingredients: [
-      { item: "Carrots", qty: 0.1, unit: "kg" },
-      { item: "Potatoes", qty: 0.1, unit: "kg" },
-    ],
-  },
-  {
-    id: "m8", name: "Steamed Rice", category: "Sides", sellingPrice: 35,
-    ingredients: [{ item: "Rice", qty: 0.2, unit: "kg" }],
-  },
-];
-
-// ─── Mock Data ──────────────────────────────────────────────────────────
-const INIT_INV: InvItem[] = [
-  { id: "i1", name: "Beef", category: "Proteins", quantity: 1.5, unit: "kilograms", unitCost: 380, reorderPoint: 3, dateStocked: "2026-07-20", expiryDate: "2026-07-24" },
-  { id: "i2", name: "Chicken", category: "Proteins", quantity: 3, unit: "kilograms", unitCost: 220, reorderPoint: 4, dateStocked: "2026-07-20", expiryDate: "2026-07-26" },
-  { id: "i3", name: "Pork", category: "Proteins", quantity: 2, unit: "kilograms", unitCost: 300, reorderPoint: 3, dateStocked: "2026-07-21", expiryDate: "2026-07-25" },
-  { id: "i4", name: "Rice", category: "Grains", quantity: 10, unit: "kilograms", unitCost: 55, reorderPoint: 5, dateStocked: "2026-07-10", expiryDate: "2026-08-21" },
-  { id: "i5", name: "Potatoes", category: "Produce", quantity: 1, unit: "kilograms", unitCost: 60, reorderPoint: 1.5, dateStocked: "2026-07-18", expiryDate: "2026-07-29" },
-  { id: "i6", name: "Carrots", category: "Produce", quantity: 0.8, unit: "kilograms", unitCost: 50, reorderPoint: 1, dateStocked: "2026-07-18", expiryDate: "2026-08-01" },
-  { id: "i7", name: "Tomatoes", category: "Produce", quantity: 0.6, unit: "kilograms", unitCost: 80, reorderPoint: 0.5, dateStocked: "2026-07-21", expiryDate: "2026-07-27" },
-  { id: "i8", name: "Garlic", category: "Produce", quantity: 0.5, unit: "kilograms", unitCost: 200, reorderPoint: 0.2, dateStocked: "2026-07-15", expiryDate: "2026-08-05" },
-  { id: "i9", name: "Onions", category: "Produce", quantity: 0.8, unit: "kilograms", unitCost: 70, reorderPoint: 0.5, dateStocked: "2026-07-15", expiryDate: "2026-08-05" },
-  { id: "i10", name: "Cooking Oil", category: "Pantry", quantity: 2, unit: "liters", unitCost: 120, reorderPoint: 0.5, dateStocked: "2026-07-10", expiryDate: "2027-07-10" },
-];
-
-const INIT_SALES: SaleRec[] = [
-  { id: "s1", date: "2026-07-22", menuItemId: "m1", item: "Menudo", category: "Main Course", quantitySold: 18, unitPrice: 180 },
-  { id: "s2", date: "2026-07-22", menuItemId: "m4", item: "Grilled Chicken", category: "Main Course", quantitySold: 24, unitPrice: 145 },
-  { id: "s3", date: "2026-07-22", menuItemId: "m7", item: "Steamed Vegetables", category: "Sides", quantitySold: 9, unitPrice: 80 },
-  { id: "s4", date: "2026-07-21", menuItemId: "m1", item: "Menudo", category: "Main Course", quantitySold: 21, unitPrice: 180 },
-  { id: "s5", date: "2026-07-21", menuItemId: "m2", item: "Chicken Adobo", category: "Main Course", quantitySold: 15, unitPrice: 150 },
-  { id: "s6", date: "2026-07-21", menuItemId: "m8", item: "Steamed Rice", category: "Sides", quantitySold: 40, unitPrice: 35 },
-  { id: "s7", date: "2026-07-20", menuItemId: "m3", item: "Sinigang na Baboy", category: "Main Course", quantitySold: 12, unitPrice: 165 },
-  { id: "s8", date: "2026-07-20", menuItemId: "m4", item: "Grilled Chicken", category: "Main Course", quantitySold: 18, unitPrice: 145 },
-  { id: "s9", date: "2026-07-19", menuItemId: "m6", item: "Kare-Kare", category: "Main Course", quantitySold: 8, unitPrice: 220 },
-  { id: "s10", date: "2026-07-19", menuItemId: "m5", item: "Lechon Kawali", category: "Main Course", quantitySold: 14, unitPrice: 175 },
-  { id: "s11", date: "2026-07-18", menuItemId: "m1", item: "Menudo", category: "Main Course", quantitySold: 25, unitPrice: 180 },
-  { id: "s12", date: "2026-07-18", menuItemId: "m8", item: "Steamed Rice", category: "Sides", quantitySold: 50, unitPrice: 35 },
-  { id: "s13", date: "2026-07-17", menuItemId: "m2", item: "Chicken Adobo", category: "Main Course", quantitySold: 19, unitPrice: 150 },
-  { id: "s14", date: "2026-07-16", menuItemId: "m4", item: "Grilled Chicken", category: "Main Course", quantitySold: 22, unitPrice: 145 },
-  { id: "s15", date: "2026-07-15", menuItemId: "m3", item: "Sinigang na Baboy", category: "Main Course", quantitySold: 16, unitPrice: 165 },
-];
-
-const INIT_WASTE: WasteRec[] = [
-  {
-    id: "w1", date: "2026-07-22", menuItem: "Menudo", servingsWasted: 3,
-    ingredients: [
-      { name: "Beef", qty: 0.6, unit: "kg", cost: 228 },
-      { name: "Potatoes", qty: 0.45, unit: "kg", cost: 27 },
-      { name: "Carrots", qty: 0.45, unit: "kg", cost: 22.5 },
-      { name: "Tomatoes", qty: 0.3, unit: "kg", cost: 24 },
-    ],
-    estimatedLoss: 301.5,
-  },
-  {
-    id: "w2", date: "2026-07-21", menuItem: "Grilled Chicken", servingsWasted: 2,
-    ingredients: [{ name: "Chicken", qty: 0.8, unit: "kg", cost: 176 }],
-    estimatedLoss: 176,
-  },
-  {
-    id: "w3", date: "2026-07-20", menuItem: "Sinigang na Baboy", servingsWasted: 4,
-    ingredients: [
-      { name: "Pork", qty: 1, unit: "kg", cost: 300 },
-      { name: "Tomatoes", qty: 0.4, unit: "kg", cost: 32 },
-    ],
-    estimatedLoss: 332,
-  },
-];
-
-const NAV_ITEMS: { id: View; label: string; Icon: React.ElementType }[] = [
-  { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
-  { id: "inventory", label: "Inventory", Icon: Package },
-  { id: "supplies", label: "Supplies", Icon: ClipboardList },
-  { id: "sales", label: "Sales Log", Icon: ShoppingCart },
-  { id: "waste", label: "Waste Log", Icon: Trash2 },
-  { id: "calculator", label: "Cost Calculator", Icon: Calculator },
-  { id: "reports", label: "Reports & AI", Icon: BarChart3 },
-];
-
-// ─── Helpers ────────────────────────────────────────────────────────────
-const uid = () => Math.random().toString(36).slice(2, 9);
-const fmtP = (n: number) =>
-  `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-function daysUntilExpiry(expiryDate: string): number {
-  const today = new Date(TODAY);
-  const expiry = new Date(expiryDate);
-  return Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function getIngredientUnitCost(itemName: string, inv: InvItem[]): number {
-  const found = inv.find((i) => i.name.toLowerCase() === itemName.toLowerCase());
-  return found ? found.unitCost : 100;
-}
+// ─── Local modules ──────────────────────────────────────────────────────
+import type {
+  View,
+  Role,
+  InvItem,
+  SaleRec,
+  WasteRec,
+  SupplyReq,
+  Rec,
+  ContextTag,
+  DispositionRoute,
+  StockAlert,
+} from "./types";
+import {
+  TODAY,
+  CHART_COLORS,
+  UNITS,
+  MENU_ITEMS,
+  INIT_INV,
+  INIT_SALES,
+  INIT_WASTE,
+  NAV_ITEMS,
+  CONTEXT_TAGS,
+  DISPOSITION_ROUTES,
+  FOOD_SAVED_ROUTES,
+} from "./constants";
+import { uid, fmtP, daysUntilExpiry, getIngredientUnitCost } from "./helpers";
+import { deductIngredients } from "./recipeEngine";
+import {
+  initStorage,
+  saveInventory,
+  loadInventory,
+  saveSales,
+  loadSales,
+  saveWaste,
+  loadWaste,
+  saveRole,
+  loadRole,
+  saveDarkMode,
+  loadDarkMode,
+  exportAllData,
+  validateImportData,
+  clearAllData,
+  createDebouncedSaver,
+} from "./persistence";
 
 // ─── Shared components ──────────────────────────────────────────────────
 function FieldInput({
@@ -398,12 +260,106 @@ function ExpiryBadge({ expiryDate }: { expiryDate: string }) {
   return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">Expires in {days}d</span>;
 }
 
+function StockAlertBanner({
+  alerts,
+  onDismiss,
+}: {
+  alerts: StockAlert[];
+  onDismiss: () => void;
+}) {
+  if (alerts.length === 0) return null;
+  return (
+    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-800 rounded-xl p-4 mb-4">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="font-semibold text-sm text-amber-800 dark:text-amber-300">
+            Insufficient Stock Warning
+          </p>
+          <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+            The following ingredients exceed available stock and have been clamped to zero:
+          </p>
+          <ul className="mt-2 space-y-1">
+            {alerts.map((a) => (
+              <li key={a.ingredientName} className="text-xs text-amber-700 dark:text-amber-400">
+                <span className="font-semibold">{a.ingredientName}</span>: needed {a.required.toFixed(2)} {a.unit}, only {a.available.toFixed(2)} available
+              </li>
+            ))}
+          </ul>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-900/30 text-amber-600 dark:text-amber-400 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ContextTagBar({
+  value,
+  onChange,
+}: {
+  value: ContextTag;
+  onChange: (tag: ContextTag) => void;
+}) {
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {CONTEXT_TAGS.map((tag) => (
+        <button
+          key={tag}
+          onClick={() => onChange(tag)}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            value === tag
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <Tag className="w-3 h-3 inline mr-1" />
+          {tag}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RoleBadge({ role }: { role: Role }) {
+  return (
+    <span
+      className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+        role === "manager"
+          ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400"
+          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+      }`}
+    >
+      {role === "manager" ? (
+        <>
+          <Shield className="w-3 h-3 inline mr-0.5" />
+          Manager
+        </>
+      ) : (
+        <>
+          <Users className="w-3 h-3 inline mr-0.5" />
+          Staff
+        </>
+      )}
+    </span>
+  );
+}
+
 // ─── Dashboard View ─────────────────────────────────────────────────────
 function DashboardView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; waste: WasteRec[] }) {
   const totalInvValue = inv.reduce((a, i) => a + i.quantity * i.unitCost, 0);
   const todayRevenue = sales.filter((s) => s.date === TODAY).reduce((a, s) => a + s.quantitySold * s.unitPrice, 0);
   const weekWasteLoss = waste.filter((w) => w.date >= "2026-07-16").reduce((a, w) => a + w.estimatedLoss, 0);
   const expiringSoon = inv.filter((i) => { const d = daysUntilExpiry(i.expiryDate); return d >= 0 && d <= 3; });
+
+  // Food Saved KPI — total peso value of waste routed to positive channels
+  const foodSavedValue = waste
+    .filter((w) => (FOOD_SAVED_ROUTES as readonly string[]).includes(w.dispositionRoute))
+    .reduce((a, w) => a + w.estimatedLoss, 0);
 
   const trendData = useMemo(() => {
     const days = [
@@ -426,10 +382,11 @@ function DashboardView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]
     <div className="space-y-5">
       <PageHeader title="Dashboard" subtitle="Your operation at a glance — Jul 22, 2026" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <KpiCard label="Inventory Value" value={fmtP(totalInvValue)} sub={`${inv.length} items tracked`} Icon={Package} iconBg="bg-indigo-100 dark:bg-indigo-950/40" iconColor="text-indigo-600 dark:text-indigo-400" />
         <KpiCard label="Today's Revenue" value={fmtP(todayRevenue)} sub="Jul 22 · Live" Icon={DollarSign} iconBg="bg-emerald-100 dark:bg-emerald-950/40" iconColor="text-emerald-600 dark:text-emerald-400" />
         <KpiCard label="Waste Loss (7d)" value={fmtP(weekWasteLoss)} sub="Past 7 days" Icon={Trash2} iconBg="bg-rose-100 dark:bg-rose-950/40" iconColor="text-rose-600 dark:text-rose-400" />
+        <KpiCard label="Food Saved" value={fmtP(foodSavedValue)} sub="Staff / Charity / Reused" Icon={Heart} iconBg="bg-teal-100 dark:bg-teal-950/40" iconColor="text-teal-600 dark:text-teal-400" />
         <KpiCard label="Expiring Soon" value={String(expiringSoon.length)} sub="Items within 3 days" Icon={AlertTriangle} iconBg="bg-amber-100 dark:bg-amber-950/40" iconColor="text-amber-600 dark:text-amber-400" />
       </div>
 
@@ -490,7 +447,7 @@ function DashboardView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/30 border-b border-border">
-                {["Date", "Item", "Category", "Qty", "Revenue"].map((h) => (
+                {["Date", "Item", "Category", "Tag", "Qty", "Revenue"].map((h) => (
                   <th key={h} className={`px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide ${h === "Qty" || h === "Revenue" ? "text-right" : "text-left"}`}>{h}</th>
                 ))}
               </tr>
@@ -501,6 +458,13 @@ function DashboardView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]
                   <td className="px-5 py-3 text-muted-foreground text-xs">{s.date}</td>
                   <td className="px-5 py-3 font-medium">{s.item}</td>
                   <td className="px-5 py-3 text-muted-foreground">{s.category}</td>
+                  <td className="px-5 py-3">
+                    {s.contextTag && s.contextTag !== "Regular" && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 font-medium">
+                        {s.contextTag}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-right">{s.quantitySold}</td>
                   <td className="px-5 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
                     {fmtP(s.quantitySold * s.unitPrice)}
@@ -840,8 +804,22 @@ function SuppliesView({ inv }: { inv: InvItem[] }) {
 }
 
 // ─── Sales View ─────────────────────────────────────────────────────────
-function SalesView({ sales, setSales }: { sales: SaleRec[]; setSales: Dispatch<SetStateAction<SaleRec[]>> }) {
+function SalesView({
+  sales,
+  setSales,
+  inv,
+  setInv,
+  role,
+}: {
+  sales: SaleRec[];
+  setSales: Dispatch<SetStateAction<SaleRec[]>>;
+  inv: InvItem[];
+  setInv: Dispatch<SetStateAction<InvItem[]>>;
+  role: Role;
+}) {
   const [search, setSearch] = useState("");
+  const [contextTag, setContextTag] = useState<ContextTag>("Regular");
+  const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
 
   const todayCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -851,9 +829,18 @@ function SalesView({ sales, setSales }: { sales: SaleRec[]; setSales: Dispatch<S
     return counts;
   }, [sales]);
 
-  const addSale = (menuItem: MenuItem) => {
+  const addSale = (menuItem: typeof MENU_ITEMS[number]) => {
+    // Deduct ingredients from inventory
+    const result = deductIngredients(menuItem, 1, inv);
+    setInv(result.updatedInv);
+
+    if (result.alerts.length > 0) {
+      setStockAlerts(result.alerts);
+    }
+
+    // Update sales record
     setSales((prev) => {
-      const existing = prev.find((s) => s.date === TODAY && s.menuItemId === menuItem.id);
+      const existing = prev.find((s) => s.date === TODAY && s.menuItemId === menuItem.id && s.contextTag === contextTag);
       if (existing) {
         return prev.map((s) =>
           s.id === existing.id ? { ...s, quantitySold: s.quantitySold + 1 } : s
@@ -861,7 +848,16 @@ function SalesView({ sales, setSales }: { sales: SaleRec[]; setSales: Dispatch<S
       }
       return [
         ...prev,
-        { id: uid(), date: TODAY, menuItemId: menuItem.id, item: menuItem.name, category: menuItem.category, quantitySold: 1, unitPrice: menuItem.sellingPrice },
+        {
+          id: uid(),
+          date: TODAY,
+          menuItemId: menuItem.id,
+          item: menuItem.name,
+          category: menuItem.category,
+          quantitySold: 1,
+          unitPrice: menuItem.sellingPrice,
+          contextTag,
+        },
       ];
     });
   };
@@ -873,12 +869,19 @@ function SalesView({ sales, setSales }: { sales: SaleRec[]; setSales: Dispatch<S
   const todayRevenue = sales.filter((s) => s.date === TODAY).reduce((a, s) => a + s.quantitySold * s.unitPrice, 0);
   const todayServings = sales.filter((s) => s.date === TODAY).reduce((a, s) => a + s.quantitySold, 0);
 
+  // Determine if we should use enlarged tap targets (staff mode)
+  const isStaff = role === "staff";
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Sales Log"
         subtitle={`Tap +1 to record a serving sold · ${TODAY}`}
       />
+
+      <ContextTagBar value={contextTag} onChange={setContextTag} />
+
+      <StockAlertBanner alerts={stockAlerts} onDismiss={() => setStockAlerts([])} />
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -909,9 +912,13 @@ function SalesView({ sales, setSales }: { sales: SaleRec[]; setSales: Dispatch<S
               </div>
               <button
                 onClick={() => addSale(menuItem)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 active:scale-95 transition-all"
+                className={`flex items-center gap-1.5 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 active:scale-95 transition-all ${
+                  isStaff
+                    ? "px-5 py-3.5 text-base min-h-[56px] min-w-[80px] justify-center"
+                    : "px-3.5 py-2 text-sm"
+                }`}
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className={isStaff ? "w-4.5 h-4.5" : "w-3.5 h-3.5"} />
                 +1
               </button>
             </div>
@@ -938,13 +945,20 @@ function WasteView({
   waste,
   setWaste,
   inv,
+  setInv,
+  role,
 }: {
   waste: WasteRec[];
   setWaste: Dispatch<SetStateAction<WasteRec[]>>;
   inv: InvItem[];
+  setInv: Dispatch<SetStateAction<InvItem[]>>;
+  role: Role;
 }) {
   const [selectedMenuId, setSelectedMenuId] = useState<string>(MENU_ITEMS[0].id);
   const [servings, setServings] = useState(1);
+  const [dispositionRoute, setDispositionRoute] = useState<DispositionRoute>("Disposed");
+  const [contextTag, setContextTag] = useState<ContextTag>("Regular");
+  const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
 
   const selectedMenu = MENU_ITEMS.find((m) => m.id === selectedMenuId) ?? MENU_ITEMS[0];
 
@@ -956,7 +970,17 @@ function WasteView({
 
   const estimatedLoss = computedIngredients.reduce((a, i) => a + i.cost, 0);
 
+  const isStaff = role === "staff";
+
   const addToRecords = () => {
+    // Deduct ingredients from inventory
+    const result = deductIngredients(selectedMenu, servings, inv);
+    setInv(result.updatedInv);
+
+    if (result.alerts.length > 0) {
+      setStockAlerts(result.alerts);
+    }
+
     const newRec: WasteRec = {
       id: uid(),
       date: TODAY,
@@ -964,9 +988,20 @@ function WasteView({
       servingsWasted: servings,
       ingredients: computedIngredients,
       estimatedLoss,
+      dispositionRoute,
+      contextTag,
     };
     setWaste((p) => [newRec, ...p]);
     setServings(1);
+  };
+
+  // Disposition route icon/color mapping
+  const routeStyles: Record<DispositionRoute, { bg: string; activeBg: string; text: string }> = {
+    "Staff Allocation": { bg: "bg-blue-50 dark:bg-blue-950/20", activeBg: "bg-blue-500 dark:bg-blue-600", text: "text-blue-700 dark:text-blue-400" },
+    "Charity / Community": { bg: "bg-teal-50 dark:bg-teal-950/20", activeBg: "bg-teal-500 dark:bg-teal-600", text: "text-teal-700 dark:text-teal-400" },
+    "Reused as Ingredient": { bg: "bg-emerald-50 dark:bg-emerald-950/20", activeBg: "bg-emerald-500 dark:bg-emerald-600", text: "text-emerald-700 dark:text-emerald-400" },
+    "Composted": { bg: "bg-amber-50 dark:bg-amber-950/20", activeBg: "bg-amber-500 dark:bg-amber-600", text: "text-amber-700 dark:text-amber-400" },
+    "Disposed": { bg: "bg-rose-50 dark:bg-rose-950/20", activeBg: "bg-rose-500 dark:bg-rose-600", text: "text-rose-700 dark:text-rose-400" },
   };
 
   return (
@@ -975,6 +1010,10 @@ function WasteView({
         title="Waste & Leftovers"
         subtitle="Log unsold dishes and auto-calculate ingredient losses"
       />
+
+      <ContextTagBar value={contextTag} onChange={setContextTag} />
+
+      <StockAlertBanner alerts={stockAlerts} onDismiss={() => setStockAlerts([])} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         {/* Input card */}
@@ -1002,19 +1041,51 @@ function WasteView({
             <div className="flex items-center justify-center gap-5">
               <button
                 onClick={() => setServings((s) => Math.max(1, s - 1))}
-                className="w-14 h-14 rounded-xl border-2 border-border flex items-center justify-center text-xl font-bold hover:bg-rose-50 hover:border-rose-300 hover:text-rose-600 dark:hover:bg-rose-950/30 transition-colors"
+                className={`rounded-xl border-2 border-border flex items-center justify-center text-xl font-bold hover:bg-rose-50 hover:border-rose-300 hover:text-rose-600 dark:hover:bg-rose-950/30 transition-colors ${
+                  isStaff ? "w-16 h-16" : "w-14 h-14"
+                }`}
               >
                 −
               </button>
-              <div className="w-20 h-20 rounded-2xl bg-amber-100 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-800 flex items-center justify-center">
-                <span className="text-3xl font-bold text-amber-700 dark:text-amber-400">{servings}</span>
+              <div className={`rounded-2xl bg-amber-100 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-800 flex items-center justify-center ${
+                isStaff ? "w-24 h-24" : "w-20 h-20"
+              }`}>
+                <span className={`font-bold text-amber-700 dark:text-amber-400 ${isStaff ? "text-4xl" : "text-3xl"}`}>{servings}</span>
               </div>
               <button
                 onClick={() => setServings((s) => s + 1)}
-                className="w-14 h-14 rounded-xl border-2 border-border flex items-center justify-center text-xl font-bold hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-600 dark:hover:bg-emerald-950/30 transition-colors"
+                className={`rounded-xl border-2 border-border flex items-center justify-center text-xl font-bold hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-600 dark:hover:bg-emerald-950/30 transition-colors ${
+                  isStaff ? "w-16 h-16" : "w-14 h-14"
+                }`}
               >
                 +
               </button>
+            </div>
+          </div>
+
+          {/* Disposition Route */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Disposition Route
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {DISPOSITION_ROUTES.map((route) => {
+                const isActive = dispositionRoute === route;
+                const style = routeStyles[route];
+                return (
+                  <button
+                    key={route}
+                    onClick={() => setDispositionRoute(route)}
+                    className={`px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
+                      isActive
+                        ? `${style.activeBg} text-white shadow-sm`
+                        : `${style.bg} ${style.text} hover:opacity-80`
+                    } ${route === "Disposed" ? "col-span-2" : ""}`}
+                  >
+                    {route}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -1043,7 +1114,9 @@ function WasteView({
 
           <button
             onClick={addToRecords}
-            className="w-full py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold tracking-wide hover:bg-primary/90 transition-colors"
+            className={`w-full bg-primary text-primary-foreground rounded-xl font-bold tracking-wide hover:bg-primary/90 transition-colors ${
+              isStaff ? "py-4 text-base" : "py-3 text-sm"
+            }`}
           >
             ADD TO RECORDS
           </button>
@@ -1082,12 +1155,21 @@ function WasteView({
                       </button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 items-center">
                     {rec.ingredients.map((ing) => (
                       <span key={ing.name} className="text-xs text-muted-foreground">
                         {ing.name}: {ing.qty.toFixed(2)} {ing.unit}
                       </span>
                     ))}
+                    {rec.dispositionRoute && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        (FOOD_SAVED_ROUTES as readonly string[]).includes(rec.dispositionRoute)
+                          ? "bg-teal-100 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400"
+                          : "bg-muted text-muted-foreground"
+                      }`}>
+                        {rec.dispositionRoute}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1185,53 +1267,61 @@ function CalculatorView({ inv }: { inv: InvItem[] }) {
 function generateRecommendations(inv: InvItem[], sales: SaleRec[], waste: WasteRec[]): Rec[] {
   const recs: Rec[] = [];
 
+  // ── Waste Velocity: per-dish waste over rolling 7 days ──
   const wasteByMenuItem: Record<string, number> = {};
-  waste.forEach((w) => { wasteByMenuItem[w.menuItem] = (wasteByMenuItem[w.menuItem] || 0) + w.estimatedLoss; });
+  const recentWaste = waste.filter((w) => w.date >= "2026-07-16");
+  recentWaste.forEach((w) => { wasteByMenuItem[w.menuItem] = (wasteByMenuItem[w.menuItem] || 0) + w.estimatedLoss; });
 
+  // ── Sales aggregation ──
   const salesByItem: Record<string, number> = {};
   sales.forEach((s) => { salesByItem[s.item] = (salesByItem[s.item] || 0) + s.quantitySold; });
 
   const totalRevenue = sales.reduce((a, s) => a + s.quantitySold * s.unitPrice, 0);
   const totalWasteLoss = waste.reduce((a, w) => a + w.estimatedLoss, 0);
 
+  // ── REDUCE ORDER: Dishes exceeding ₱200/week in waste ──
   Object.entries(wasteByMenuItem)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 2)
     .forEach(([item, loss]) => {
-      if (loss > 100) {
+      if (loss > 200) {
         recs.push({
           type: "reduce",
           title: `Reduce ${item} prepared quantity`,
-          detail: `${item} accounts for ${fmtP(loss)} in waste losses. Over-preparation is the likely cause. Consider reducing batch size by 20–30% and preparing in shorter intervals throughout service hours to maintain freshness and minimize surplus.`,
-          priority: loss > 250 ? "high" : "medium",
+          detail: `${item} accounts for ${fmtP(loss)} in waste losses this week — above the ₱200 threshold. Over-preparation is the likely cause. Consider reducing batch size by 20–30% and preparing in shorter intervals throughout service hours to maintain freshness and minimize surplus.`,
+          priority: loss > 400 ? "high" : "medium",
         });
       }
     });
 
+  // ── RESTOCK SOON: Items below reorderPoint relative to daily sales velocity ──
+  const uniqueSalesDates = [...new Set(sales.map((s) => s.date))].length || 1;
   inv
-    .filter((i) => {
-      const sold = salesByItem[i.name] || 0;
-      return sold > 20 && i.quantity < i.reorderPoint * 2;
-    })
+    .filter((i) => i.quantity <= i.reorderPoint)
     .forEach((item) => {
+      const totalSold = salesByItem[item.name] || 0;
+      const dailyRate = totalSold / uniqueSalesDates;
+      const daysOfStock = dailyRate > 0 ? item.quantity / dailyRate : 999;
+
       recs.push({
         type: "increase",
         title: `Restock ${item.name} soon`,
-        detail: `${item.name} has only ${item.quantity} ${item.unit} remaining with demand velocity of ~${Math.ceil((salesByItem[item.name] || 0) / 8)} servings/day. At this rate, stock-out is projected within 2–3 days. Recommend a 40–50% increase on next purchase order.`,
-        priority: "high",
+        detail: `${item.name} has ${item.quantity} ${item.unit} remaining (below reorder point of ${item.reorderPoint}). At ~${dailyRate.toFixed(1)} ${item.unit}/day consumption, stock-out is projected in ~${Math.max(0, daysOfStock).toFixed(0)} day${daysOfStock === 1 ? "" : "s"}. Recommend a 40–50% increase on next purchase order.`,
+        priority: daysOfStock <= 1 ? "high" : "medium",
       });
     });
 
+  // ── EXPIRY WARNING: Items within 3 days of expiration ──
   const expiringItems = inv.filter((i) => { const d = daysUntilExpiry(i.expiryDate); return d >= 0 && d <= 3; });
   if (expiringItems.length > 0) {
     recs.push({
       type: "warning",
       title: `${expiringItems.length} item${expiringItems.length > 1 ? "s" : ""} expiring within 3 days`,
-      detail: `${expiringItems.map((i) => i.name).join(", ")} ${expiringItems.length > 1 ? "are" : "is"} approaching expiry. Prioritize these in today's menu preparation to minimize waste losses. Consider offering a daily special featuring these ingredients.`,
+      detail: `${expiringItems.map((i) => `${i.name} (${daysUntilExpiry(i.expiryDate)}d)`).join(", ")} ${expiringItems.length > 1 ? "are" : "is"} approaching expiry. Prioritize these in today's menu preparation to minimize waste losses. Consider offering a daily special featuring these ingredients.`,
       priority: "high",
     });
   }
 
+  // ── PROFIT INSIGHT: Waste-to-revenue ratio ──
   const wasteRatio = totalRevenue > 0 ? totalWasteLoss / totalRevenue : 0;
   if (wasteRatio > 0.08) {
     recs.push({
@@ -1242,6 +1332,7 @@ function generateRecommendations(inv: InvItem[], sales: SaleRec[], waste: WasteR
     });
   }
 
+  // ── PROFIT INSIGHT: Top seller ──
   const topSeller = Object.entries(salesByItem).sort((a, b) => b[1] - a[1])[0];
   if (topSeller) {
     const topRevenue = sales.filter((s) => s.item === topSeller[0]).reduce((a, s) => a + s.quantitySold * s.unitPrice, 0);
@@ -1251,6 +1342,28 @@ function generateRecommendations(inv: InvItem[], sales: SaleRec[], waste: WasteR
       detail: `${topSeller[0]} is your best-selling item at ${topSeller[1]} servings and ${fmtP(topRevenue)} in revenue over the tracked period (${((topRevenue / totalRevenue) * 100).toFixed(0)}% of total). Secure reliable supplier terms and maintain a safety buffer above the reorder point to avoid stock-outs on peak days.`,
       priority: "low",
     });
+  }
+
+  // ── DISPOSITION INSIGHT: If >30% of waste goes to Disposed ──
+  const totalWasteEntries = waste.length;
+  if (totalWasteEntries > 0) {
+    const disposedCount = waste.filter((w) => w.dispositionRoute === "Disposed").length;
+    const disposedRatio = disposedCount / totalWasteEntries;
+    if (disposedRatio > 0.3) {
+      const savedValue = waste
+        .filter((w) => (FOOD_SAVED_ROUTES as readonly string[]).includes(w.dispositionRoute))
+        .reduce((a, w) => a + w.estimatedLoss, 0);
+      const disposedValue = waste
+        .filter((w) => w.dispositionRoute === "Disposed")
+        .reduce((a, w) => a + w.estimatedLoss, 0);
+
+      recs.push({
+        type: "insight",
+        title: "Improve surplus routing to reduce waste disposal",
+        detail: `${(disposedRatio * 100).toFixed(0)}% of waste entries are marked "Disposed" (${fmtP(disposedValue)}). Currently ${fmtP(savedValue)} has been saved via staff allocation, charity, or reuse. Consider routing more surplus to staff meals or local community programs to reduce financial loss and food waste.`,
+        priority: "medium",
+      });
+    }
   }
 
   return recs;
@@ -1300,14 +1413,32 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
     return Object.entries(map).map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }));
   }, [inv]);
 
+  // Surplus disposition breakdown
+  const dispositionData = useMemo(() => {
+    const map: Record<string, number> = {};
+    waste.forEach((w) => {
+      const route = w.dispositionRoute || "Disposed";
+      map[route] = (map[route] || 0) + w.estimatedLoss;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }));
+  }, [waste]);
+
+  const dispositionColors: Record<string, string> = {
+    "Staff Allocation": "#3b82f6",
+    "Charity / Community": "#14b8a6",
+    "Reused as Ingredient": "#10b981",
+    "Composted": "#f59e0b",
+    "Disposed": "#f43f5e",
+  };
+
   const totalRevenue = sales.reduce((a, s) => a + s.quantitySold * s.unitPrice, 0);
   const totalWaste = waste.reduce((a, w) => a + w.estimatedLoss, 0);
 
   const recStyle: Record<string, { bg: string; border: string; labelColor: string; label: string }> = {
-    increase: { bg: "bg-emerald-50 dark:bg-emerald-950/20", border: "border-emerald-200 dark:border-emerald-900", labelColor: "text-emerald-700 dark:text-emerald-400", label: "Increase Supply" },
+    increase: { bg: "bg-emerald-50 dark:bg-emerald-950/20", border: "border-emerald-200 dark:border-emerald-900", labelColor: "text-emerald-700 dark:text-emerald-400", label: "Restock Soon" },
     reduce: { bg: "bg-amber-50 dark:bg-amber-950/20", border: "border-amber-200 dark:border-amber-900", labelColor: "text-amber-700 dark:text-amber-400", label: "Reduce Order" },
-    warning: { bg: "bg-rose-50 dark:bg-rose-950/20", border: "border-rose-200 dark:border-rose-900", labelColor: "text-rose-700 dark:text-rose-400", label: "Warning" },
-    insight: { bg: "bg-indigo-50 dark:bg-indigo-950/20", border: "border-indigo-200 dark:border-indigo-900", labelColor: "text-indigo-700 dark:text-indigo-400", label: "Insight" },
+    warning: { bg: "bg-rose-50 dark:bg-rose-950/20", border: "border-rose-200 dark:border-rose-900", labelColor: "text-rose-700 dark:text-rose-400", label: "Expiry Warning" },
+    insight: { bg: "bg-indigo-50 dark:bg-indigo-950/20", border: "border-indigo-200 dark:border-indigo-900", labelColor: "text-indigo-700 dark:text-indigo-400", label: "Profit Insight" },
   };
 
   const priorityDot: Record<string, string> = { high: "bg-rose-500", medium: "bg-amber-500", low: "bg-slate-400" };
@@ -1385,6 +1516,21 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
                   <Tooltip formatter={(v: number) => fmtP(v)} />
                   <Bar dataKey="value" name="Waste Loss" fill="#f43f5e" radius={[0, 4, 4, 0]} />
                 </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="bg-card rounded-xl border border-border p-5">
+              <h3 className="font-semibold text-sm mb-4">Surplus Disposition Breakdown</h3>
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie data={dispositionData} cx="50%" cy="50%" innerRadius={55} outerRadius={95} dataKey="value" nameKey="name" paddingAngle={3}>
+                    {dispositionData.map((entry) => (
+                      <Cell key={entry.name} fill={dispositionColors[entry.name] || "#94a3b8"} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => fmtP(v)} />
+                  <Legend iconType="circle" iconSize={8} />
+                </PieChart>
               </ResponsiveContainer>
             </div>
 
@@ -1480,6 +1626,203 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
   );
 }
 
+// ─── Settings View ──────────────────────────────────────────────────────
+function SettingsView({
+  inv,
+  sales,
+  waste,
+  setInv,
+  setSales,
+  setWaste,
+}: {
+  inv: InvItem[];
+  sales: SaleRec[];
+  waste: WasteRec[];
+  setInv: Dispatch<SetStateAction<InvItem[]>>;
+  setSales: Dispatch<SetStateAction<SaleRec[]>>;
+  setWaste: Dispatch<SetStateAction<WasteRec[]>>;
+}) {
+  const [importStatus, setImportStatus] = useState<"idle" | "success" | "error">("idle");
+  const [importError, setImportError] = useState("");
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = async () => {
+    const json = await exportAllData(inv, sales, waste);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stockpilot-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const text = await file.text();
+    const result = validateImportData(text);
+
+    if (!result.valid) {
+      setImportStatus("error");
+      setImportError(result.error);
+      return;
+    }
+
+    setInv(result.data.inventory);
+    setSales(result.data.sales);
+    setWaste(result.data.waste);
+    setImportStatus("success");
+
+    // Persist imported data
+    await saveInventory(result.data.inventory);
+    await saveSales(result.data.sales);
+    await saveWaste(result.data.waste);
+
+    setTimeout(() => setImportStatus("idle"), 3000);
+  };
+
+  const handleReset = async () => {
+    await clearAllData();
+    setInv(INIT_INV);
+    setSales(INIT_SALES);
+    setWaste(INIT_WASTE);
+    setShowResetConfirm(false);
+  };
+
+  return (
+    <div className="space-y-5 max-w-2xl">
+      <PageHeader title="Settings" subtitle="Data management and application preferences" />
+
+      {/* Data Management */}
+      <div className="bg-card rounded-xl border border-border p-6 space-y-5">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Data Management</h3>
+
+        <div className="space-y-3">
+          {/* Export */}
+          <button
+            onClick={handleExport}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-border hover:bg-accent transition-colors text-left"
+          >
+            <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-950/40">
+              <Download className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Export Data</p>
+              <p className="text-xs text-muted-foreground">Download all inventory, sales, and waste data as JSON</p>
+            </div>
+          </button>
+
+          {/* Import */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImport}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-border hover:bg-accent transition-colors text-left"
+          >
+            <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950/40">
+              <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Import Data</p>
+              <p className="text-xs text-muted-foreground">Restore from a previously exported JSON backup</p>
+            </div>
+          </button>
+
+          {importStatus === "success" && (
+            <div className="flex items-center gap-2 p-3 bg-emerald-100 dark:bg-emerald-950/20 rounded-lg text-emerald-700 dark:text-emerald-400 text-sm font-semibold">
+              <Check className="w-4 h-4" />
+              Data imported successfully!
+            </div>
+          )}
+
+          {importStatus === "error" && (
+            <div className="flex items-center gap-2 p-3 bg-rose-100 dark:bg-rose-950/20 rounded-lg text-rose-700 dark:text-rose-400 text-sm font-semibold">
+              <AlertTriangle className="w-4 h-4" />
+              Import failed: {importError}
+            </div>
+          )}
+
+          {/* Reset */}
+          <button
+            onClick={() => setShowResetConfirm(true)}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors text-left"
+          >
+            <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-950/40">
+              <RotateCcw className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm text-rose-700 dark:text-rose-400">Reset All Data</p>
+              <p className="text-xs text-muted-foreground">Clear all data and restore to initial demo state</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Storage Info */}
+      <div className="bg-card rounded-xl border border-border p-6 space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Storage</h3>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Cloud className="w-4 h-4" />
+          <span>Data is stored locally on this device using IndexedDB</span>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center p-3 bg-muted/40 rounded-lg">
+            <p className="text-xs text-muted-foreground mb-1">Inventory</p>
+            <p className="font-bold text-sm">{inv.length} items</p>
+          </div>
+          <div className="text-center p-3 bg-muted/40 rounded-lg">
+            <p className="text-xs text-muted-foreground mb-1">Sales</p>
+            <p className="font-bold text-sm">{sales.length} records</p>
+          </div>
+          <div className="text-center p-3 bg-muted/40 rounded-lg">
+            <p className="text-xs text-muted-foreground mb-1">Waste</p>
+            <p className="font-bold text-sm">{waste.length} records</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Reset Confirmation Dialog */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-card rounded-2xl border border-border w-full max-w-sm shadow-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-950/40">
+                <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <h3 className="font-semibold">Reset All Data?</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              This will permanently delete all your inventory, sales, and waste records and restore the initial demo data. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-2 border border-border rounded-lg text-sm hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReset}
+                className="flex-1 py-2 bg-rose-600 text-white rounded-lg text-sm font-semibold hover:bg-rose-700 transition-colors"
+              >
+                Reset Everything
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── App ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [dark, setDark] = useState(false);
@@ -1488,11 +1831,61 @@ export default function App() {
   const [inv, setInv] = useState<InvItem[]>(INIT_INV);
   const [sales, setSales] = useState<SaleRec[]>(INIT_SALES);
   const [waste, setWaste] = useState<WasteRec[]>(INIT_WASTE);
+  const [role, setRole] = useState<Role>("staff");
+  const [loaded, setLoaded] = useState(false);
+
+  // ── Debounced persistence savers ──
+  const debouncedSaveInv = useRef(createDebouncedSaver(saveInventory)).current;
+  const debouncedSaveSales = useRef(createDebouncedSaver(saveSales)).current;
+  const debouncedSaveWaste = useRef(createDebouncedSaver(saveWaste)).current;
+
+  // ── Load persisted state on mount ──
+  useEffect(() => {
+    (async () => {
+      await initStorage();
+      const [savedInv, savedSales, savedWaste, savedRole, savedDark] = await Promise.all([
+        loadInventory(),
+        loadSales(),
+        loadWaste(),
+        loadRole(),
+        loadDarkMode(),
+      ]);
+      if (savedInv) setInv(savedInv);
+      if (savedSales) setSales(savedSales);
+      if (savedWaste) setWaste(savedWaste);
+      if (savedRole) setRole(savedRole);
+      if (savedDark !== undefined) setDark(savedDark);
+      setLoaded(true);
+    })();
+  }, []);
+
+  // ── Persist state changes (only after initial load) ──
+  useEffect(() => { if (loaded) debouncedSaveInv(inv); }, [inv, loaded]);
+  useEffect(() => { if (loaded) debouncedSaveSales(sales); }, [sales, loaded]);
+  useEffect(() => { if (loaded) debouncedSaveWaste(waste); }, [waste, loaded]);
+  useEffect(() => { if (loaded) saveRole(role); }, [role, loaded]);
+  useEffect(() => { if (loaded) saveDarkMode(dark); }, [dark, loaded]);
+
+  // ── Filter navigation items by role ──
+  const filteredNav = useMemo(
+    () => NAV_ITEMS.filter((item) => role === "manager" || item.staffVisible),
+    [role]
+  );
 
   const navigate = (v: View) => {
     setView(v);
     setMobileOpen(false);
   };
+
+  // When switching to staff mode, redirect if currently on a manager-only view
+  useEffect(() => {
+    if (role === "staff") {
+      const allowed = NAV_ITEMS.filter((n) => n.staffVisible).map((n) => n.id);
+      if (!allowed.includes(view)) {
+        setView("dashboard");
+      }
+    }
+  }, [role]);
 
   return (
     <div className={dark ? "dark" : ""}>
@@ -1521,7 +1914,7 @@ export default function App() {
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-            {NAV_ITEMS.map(({ id, label, Icon }) => (
+            {filteredNav.map(({ id, label, Icon }) => (
               <button
                 key={id}
                 onClick={() => navigate(id)}
@@ -1537,7 +1930,32 @@ export default function App() {
             ))}
           </nav>
 
-          <div className="p-3 border-t border-border shrink-0">
+          {/* Role toggle + Dark mode */}
+          <div className="p-3 border-t border-border shrink-0 space-y-1">
+            <button
+              onClick={() => setRole((r) => (r === "staff" ? "manager" : "staff"))}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+              {role === "manager" ? (
+                <Shield className="w-4 h-4 shrink-0" />
+              ) : (
+                <Users className="w-4 h-4 shrink-0" />
+              )}
+              <span className="flex-1 text-left">
+                {role === "manager" ? "Manager Mode" : "Staff Mode"}
+              </span>
+              <span
+                className={`w-9 h-5 rounded-full relative transition-colors ${
+                  role === "manager" ? "bg-primary" : "bg-switch-background"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                    role === "manager" ? "translate-x-4" : "translate-x-0.5"
+                  }`}
+                />
+              </span>
+            </button>
             <button
               onClick={() => setDark(!dark)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
@@ -1555,7 +1973,10 @@ export default function App() {
             <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-accent transition-colors">
               <Menu className="w-5 h-5" />
             </button>
-            <span className="font-bold text-sm">StockPilot</span>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm">StockPilot</span>
+              <RoleBadge role={role} />
+            </div>
             <button onClick={() => setDark(!dark)} className="p-2 rounded-lg hover:bg-accent transition-colors">
               {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -1565,10 +1986,11 @@ export default function App() {
             {view === "dashboard" && <DashboardView inv={inv} sales={sales} waste={waste} />}
             {view === "inventory" && <InventoryView inv={inv} setInv={setInv} onRequestSupplies={() => navigate("supplies")} />}
             {view === "supplies" && <SuppliesView inv={inv} />}
-            {view === "sales" && <SalesView sales={sales} setSales={setSales} />}
-            {view === "waste" && <WasteView waste={waste} setWaste={setWaste} inv={inv} />}
+            {view === "sales" && <SalesView sales={sales} setSales={setSales} inv={inv} setInv={setInv} role={role} />}
+            {view === "waste" && <WasteView waste={waste} setWaste={setWaste} inv={inv} setInv={setInv} role={role} />}
             {view === "calculator" && <CalculatorView inv={inv} />}
             {view === "reports" && <ReportsView inv={inv} sales={sales} waste={waste} />}
+            {view === "settings" && <SettingsView inv={inv} sales={sales} waste={waste} setInv={setInv} setSales={setSales} setWaste={setWaste} />}
           </main>
         </div>
       </div>

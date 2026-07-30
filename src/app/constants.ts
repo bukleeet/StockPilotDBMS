@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 
 // ─── Constants ──────────────────────────────────────────────────────────
-export const TODAY = "2026-07-22";
-export const CHART_COLORS = ["#6366f1", "#f59e0b", "#10b981", "#f43f5e", "#8b5cf6", "#06b6d4"];
+
+// Desaturated chart palette — sky/slate/emerald tones per professor directive
+export const CHART_COLORS = ["#0284c7", "#f59e0b", "#059669", "#e11d48", "#7c3aed", "#0891b2"];
 export const UNITS = ["pieces", "grams", "kilograms", "milligrams", "milliliters", "liters"];
 
 export const CONTEXT_TAGS = [

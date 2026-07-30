@@ -1,5 +1,5 @@
 import { get, set, del, keys } from "idb-keyval";
-import type { InvItem, SaleRec, WasteRec, Role } from "./types";
+import type { InvItem, SaleRec, WasteRec, SupplyReq, Role } from "./types";
 
 /**
  * IndexedDB persistence adapter for StockPilot.
@@ -11,8 +11,10 @@ const STORAGE_KEYS = {
   inventory: "stockpilot_inventory",
   sales: "stockpilot_sales",
   waste: "stockpilot_waste",
+  supplyRequests: "stockpilot_supply_requests",
   role: "stockpilot_role",
   darkMode: "stockpilot_dark_mode",
+  settings: "stockpilot_settings",
 } as const;
 
 // ─── Generic storage wrappers ───────────────────────────────────────────
@@ -97,6 +99,14 @@ export async function loadWaste(): Promise<WasteRec[] | undefined> {
   return loadState<WasteRec[]>(STORAGE_KEYS.waste);
 }
 
+export async function saveSupplyRequests(data: SupplyReq[]): Promise<void> {
+  await saveState(STORAGE_KEYS.supplyRequests, data);
+}
+
+export async function loadSupplyRequests(): Promise<SupplyReq[] | undefined> {
+  return loadState<SupplyReq[]>(STORAGE_KEYS.supplyRequests);
+}
+
 export async function saveRole(data: Role): Promise<void> {
   await saveState(STORAGE_KEYS.role, data);
 }
@@ -113,6 +123,20 @@ export async function loadDarkMode(): Promise<boolean | undefined> {
   return loadState<boolean>(STORAGE_KEYS.darkMode);
 }
 
+// App settings (stockout blocking, date override, etc.)
+export interface AppSettings {
+  blockStockout?: boolean;
+  dateOverride?: string | null;
+}
+
+export async function saveSettings(data: AppSettings): Promise<void> {
+  await saveState(STORAGE_KEYS.settings, data);
+}
+
+export async function loadSettings(): Promise<AppSettings | undefined> {
+  return loadState<AppSettings>(STORAGE_KEYS.settings);
+}
+
 // ─── Export / Import ────────────────────────────────────────────────────
 
 export interface ExportData {
@@ -121,12 +145,14 @@ export interface ExportData {
   inventory: InvItem[];
   sales: SaleRec[];
   waste: WasteRec[];
+  supplyRequests?: SupplyReq[];
 }
 
 export async function exportAllData(
   inv: InvItem[],
   sales: SaleRec[],
-  waste: WasteRec[]
+  waste: WasteRec[],
+  supplyRequests?: SupplyReq[]
 ): Promise<string> {
   const data: ExportData = {
     version: 1,
@@ -134,6 +160,7 @@ export async function exportAllData(
     inventory: inv,
     sales,
     waste,
+    supplyRequests,
   };
   return JSON.stringify(data, null, 2);
 }

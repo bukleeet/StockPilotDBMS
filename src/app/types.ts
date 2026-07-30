@@ -68,9 +68,12 @@ export interface WasteRec {
 
 export interface SupplyReq {
   id: string;
+  date: string;
   item: string;
   quantity: number | null;
   unit: string;
+  status: "pending" | "approved" | "fulfilled" | "cancelled";
+  requestedByRole: Role;
 }
 
 export type Rec = {

@@ -14,7 +14,7 @@ import {
 
 // Desaturated chart palette — sky/slate/emerald tones per professor directive
 export const CHART_COLORS = ["#0284c7", "#f59e0b", "#059669", "#e11d48", "#7c3aed", "#0891b2"];
-export const UNITS = ["pieces", "grams", "kilograms", "milligrams", "milliliters", "liters"];
+export const UNITS = ["pieces", "grams", "kilograms", "milligrams", "milliliters", "liters", "pounds (lbs)", "packs", "boxes"];
 
 export const CONTEXT_TAGS = [
   "Regular",

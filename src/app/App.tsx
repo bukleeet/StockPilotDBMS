@@ -42,6 +42,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+import { Toaster, toast } from "sonner";
 import {
   AreaChart,
   Area,
@@ -116,6 +117,7 @@ function FieldInput({
   type = "text",
   className = "",
   placeholder = "",
+  subtext,
 }: {
   label: string;
   value: string | number;
@@ -123,7 +125,9 @@ function FieldInput({
   type?: string;
   className?: string;
   placeholder?: string;
+  subtext?: string;
 }) {
+  const isReorderPoint = label.toLowerCase().includes("reorder point");
   return (
     <div className={className}>
       <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
@@ -136,6 +140,11 @@ function FieldInput({
         placeholder={placeholder}
         className="w-full px-3 py-2 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-shadow"
       />
+      {subtext ? (
+        <p className="text-xs text-muted-foreground mt-1">{subtext}</p>
+      ) : isReorderPoint ? (
+        <p className="text-xs text-muted-foreground mt-1">Low stock threshold that triggers a restock alert.</p>
+      ) : null}
     </div>
   );
 }
@@ -271,10 +280,10 @@ function KpiCard({
 
 function ExpiryBadge({ expiryDate }: { expiryDate: string }) {
   const days = daysUntilExpiry(expiryDate);
-  if (days <= 0) return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400">Expired</span>;
-  if (days <= 2) return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400">Expires in {days}d</span>;
-  if (days <= 7) return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">Expires in {days}d</span>;
-  return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">Expires in {days}d</span>;
+  if (days <= 0) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-600 text-white shadow-xs">Expired</span>;
+  if (days <= 2) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-600 text-white shadow-xs">Expires in {days}d</span>;
+  if (days <= 7) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-500 text-white shadow-xs">Expires in {days}d</span>;
+  return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">Expires in {days}d</span>;
 }
 
 function StockAlertBanner({
@@ -366,6 +375,111 @@ function RoleBadge({ role }: { role: Role }) {
   );
 }
 
+function DailyDrillDownModal({
+  dateStr,
+  sales,
+  waste,
+  onClose,
+}: {
+  dateStr: string;
+  sales: SaleRec[];
+  waste: WasteRec[];
+  onClose: () => void;
+}) {
+  const daySales = sales.filter((s) => s.date === dateStr);
+  const dayWaste = waste.filter((w) => w.date === dateStr);
+
+  const totalRev = daySales.reduce((a, s) => a + s.quantitySold * s.unitPrice, 0);
+  const totalW = dayWaste.reduce((a, w) => a + w.estimatedLoss, 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-card rounded-2xl border border-border w-full max-w-lg shadow-2xl max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+          <div>
+            <h2 className="font-semibold text-base">Daily Summary Drill-Down</h2>
+            <p className="text-xs text-muted-foreground">{dateStr}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5 overflow-y-auto">
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 rounded-xl">
+              <p className="text-xs text-muted-foreground">Revenue</p>
+              <p className="font-bold text-lg text-emerald-600 dark:text-emerald-400">{fmtP(totalRev)}</p>
+              <p className="text-xs text-muted-foreground">{daySales.reduce((a, s) => a + s.quantitySold, 0)} servings sold</p>
+            </div>
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200/50 dark:border-rose-800/30 rounded-xl">
+              <p className="text-xs text-muted-foreground">Waste Loss</p>
+              <p className="font-bold text-lg text-rose-600 dark:text-rose-400">{fmtP(totalW)}</p>
+              <p className="text-xs text-muted-foreground">{dayWaste.reduce((a, w) => a + w.servingsWasted, 0)} servings wasted</p>
+            </div>
+          </div>
+
+          {/* Sales Breakdown */}
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <ShoppingCart className="w-3.5 h-3.5 text-emerald-500" />
+              Sales Velocity & Top Dishes
+            </h3>
+            {daySales.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No sales recorded for this date.</p>
+            ) : (
+              <div className="space-y-1.5 border border-border rounded-xl p-3 bg-muted/20">
+                {daySales.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
+                    <span className="font-medium">{s.item} ({s.quantitySold}x)</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">{fmtP(s.quantitySold * s.unitPrice)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Waste Breakdown */}
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              Waste Records & Disposition
+            </h3>
+            {dayWaste.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No waste recorded for this date.</p>
+            ) : (
+              <div className="space-y-1.5 border border-border rounded-xl p-3 bg-muted/20">
+                {dayWaste.map((w) => (
+                  <div key={w.id} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
+                    <div>
+                      <p className="font-medium">{w.menuItem} ({w.servingsWasted} servings)</p>
+                      <p className="text-[10px] text-muted-foreground">{w.dispositionRoute}</p>
+                    </div>
+                    <span className="font-semibold text-rose-600 dark:text-rose-400">{fmtP(w.estimatedLoss)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="px-6 py-3 border-t border-border shrink-0 text-right">
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard View ─────────────────────────────────────────────────────
 function DashboardView({
   inv,
@@ -380,6 +494,7 @@ function DashboardView({
   supplyRequests: SupplyReq[];
   role: Role;
 }) {
+  const [selectedDrillDate, setSelectedDrillDate] = useState<string | null>(null);
   const today = getTodayString();
   const totalInvValue = inv.reduce((a, i) => a + i.quantity * i.unitCost, 0);
   const todayRevenue = sales.filter((s) => s.date === today).reduce((a, s) => a + s.quantitySold * s.unitPrice, 0);
@@ -412,6 +527,7 @@ function DashboardView({
       days.push({ date: dateStr, label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) });
     }
     return days.map(({ date, label }) => ({
+      date,
       label,
       Revenue: parseFloat(sales.filter((s) => s.date === date).reduce((a, s) => a + s.quantitySold * s.unitPrice, 0).toFixed(2)),
       "Waste Loss": parseFloat(waste.filter((w) => w.date === date).reduce((a, w) => a + w.estimatedLoss, 0).toFixed(2)),
@@ -447,9 +563,20 @@ function DashboardView({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5">
-          <h3 className="font-semibold text-sm mb-4">Revenue vs. Waste Loss — Last 7 Days</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-sm">Revenue vs. Waste Loss — Last 7 Days</h3>
+            <span className="text-xs text-muted-foreground">Click any day for drill-down details</span>
+          </div>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={trendData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <AreaChart
+              data={trendData}
+              margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+              onClick={(e) => {
+                if (e && e.activePayload && e.activePayload.length > 0) {
+                  setSelectedDrillDate(e.activePayload[0].payload.date);
+                }
+              }}
+            >
               <defs>
                 <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#0284c7" stopOpacity={0.2} />
@@ -465,10 +592,23 @@ function DashboardView({
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `₱${v}`} width={52} />
               <Tooltip formatter={(v: number) => fmtP(v)} />
               <Legend iconType="circle" iconSize={8} />
-              <Area type="monotone" dataKey="Revenue" stroke="#0284c7" fill="url(#gRev)" strokeWidth={2} dot={false} />
-              <Area type="monotone" dataKey="Waste Loss" stroke="#e11d48" fill="url(#gWaste)" strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="Revenue" stroke="#0284c7" fill="url(#gRev)" strokeWidth={2} dot={{ r: 4, cursor: "pointer" }} />
+              <Area type="monotone" dataKey="Waste Loss" stroke="#e11d48" fill="url(#gWaste)" strokeWidth={2} dot={{ r: 4, cursor: "pointer" }} />
             </AreaChart>
           </ResponsiveContainer>
+
+          {/* Quick day buttons */}
+          <div className="flex gap-1.5 mt-3 pt-3 border-t border-border/50 flex-wrap">
+            {trendData.map((d) => (
+              <button
+                key={d.date}
+                onClick={() => setSelectedDrillDate(d.date)}
+                className="px-2 py-1 rounded-md bg-muted/60 text-muted-foreground hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-950/40 text-xs font-semibold transition-colors"
+              >
+                {d.label} 🔍
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="bg-card rounded-xl border border-border p-5">
@@ -530,6 +670,15 @@ function DashboardView({
           </table>
         </div>
       </div>
+
+      {selectedDrillDate && (
+        <DailyDrillDownModal
+          dateStr={selectedDrillDate}
+          sales={sales}
+          waste={waste}
+          onClose={() => setSelectedDrillDate(null)}
+        />
+      )}
     </div>
   );
 }
@@ -783,10 +932,12 @@ function SuppliesView({
     setSupplyRequests((p) => [newReq, ...p]);
     setQuantity("");
     if (selectedItem === "__custom__") setCustomItem("");
+    toast.success("Supply request sent to manager");
   };
 
   const cancelRequest = (id: string) => {
     setSupplyRequests((p) => p.map((r) => r.id === id ? { ...r, status: "cancelled" as const } : r));
+    toast.info("Supply request cancelled");
   };
 
   const approveRequest = (req: SupplyReq) => {
@@ -811,10 +962,12 @@ function SuppliesView({
         }];
       });
     }
+    toast.success("Supply request approved & stock added to inventory!");
   };
 
   const fulfillRequest = (id: string) => {
     setSupplyRequests((p) => p.map((r) => r.id === id ? { ...r, status: "fulfilled" as const } : r));
+    toast.success("Supply request marked fulfilled");
   };
 
   const pending = supplyRequests.filter((r) => r.status === "pending");
@@ -877,7 +1030,7 @@ function SuppliesView({
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <FieldInput label="Quantity (optional)" type="number" value={quantity} onChange={setQuantity} />
+            <FieldInput label="Quantity" type="number" value={quantity} onChange={setQuantity} placeholder="Exact quantity required" />
             <SelectField label="Unit" value={unit} onChange={setUnit} options={UNITS} />
           </div>
 
@@ -1038,6 +1191,7 @@ function SalesView({
       const check = canFulfillSale(menuItem, 1, inv);
       if (!check.canFulfill) {
         setStockAlerts(check.shortages);
+        toast.error(`Cannot log sale: Insufficient stock for ${menuItem.name}`);
         return;
       }
     }
@@ -1072,6 +1226,34 @@ function SalesView({
         },
       ];
     });
+
+    toast.success(`Recorded 1x ${menuItem.name}`);
+  };
+
+  const decrementSale = (menuItem: typeof MENU_ITEMS[number]) => {
+    const existing = sales.find((s) => s.date === today && s.menuItemId === menuItem.id && s.contextTag === contextTag && s.quantitySold > 0);
+    if (!existing) {
+      toast.error(`No logged sales for ${menuItem.name} today`);
+      return;
+    }
+
+    // Re-credit 1 serving of ingredients
+    const restored = recreditIngredients(menuItem, 1, inv);
+    setInv(restored);
+
+    // Update sales state
+    setSales((prev) =>
+      prev
+        .map((s) => {
+          if (s.id === existing.id) {
+            return { ...s, quantitySold: s.quantitySold - 1 };
+          }
+          return s;
+        })
+        .filter((s) => s.quantitySold > 0)
+    );
+
+    toast.info(`Decremented 1x ${menuItem.name} — Ingredients re-credited`);
   };
 
   const deleteSale = (sale: SaleRec) => {
@@ -1082,6 +1264,7 @@ function SalesView({
       setInv(restored);
     }
     setSales((p) => p.filter((s) => s.id !== sale.id));
+    toast.info(`Sale record deleted — Ingredients re-credited`);
   };
 
   const filteredMenu = MENU_ITEMS.filter((m) =>
@@ -1105,7 +1288,7 @@ function SalesView({
     <div className="space-y-5">
       <PageHeader
         title="Sales Log"
-        subtitle={`Tap +1 to record a serving sold · ${today}`}
+        subtitle={`Tap +1 or -1 to record or adjust servings sold · ${today}`}
       />
 
       <ContextTagBar value={contextTag} onChange={setContextTag} />
@@ -1135,7 +1318,7 @@ function SalesView({
                 <div className="flex items-center gap-2">
                   <p className="font-semibold">{menuItem.name}</p>
                   {isOutOfStock && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 flex items-center gap-1">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-600 text-white shadow-xs flex items-center gap-1">
                       <Ban className="w-3 h-3" />
                       Out of Stock
                     </span>
@@ -1148,14 +1331,24 @@ function SalesView({
                   <span className="text-xs text-muted-foreground">{fmtP(menuItem.sellingPrice)}/serving</span>
                 </div>
               </div>
-              <button
-                onClick={() => addSale(menuItem)}
-                disabled={blockStockout && isOutOfStock}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 active:scale-95 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                +1
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => decrementSale(menuItem)}
+                  disabled={count === 0}
+                  className="px-3 py-2 bg-muted text-muted-foreground hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/30 rounded-lg font-bold transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Undo / Decrement 1 serving"
+                >
+                  -1
+                </button>
+                <button
+                  onClick={() => addSale(menuItem)}
+                  disabled={blockStockout && isOutOfStock}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 active:scale-95 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  +1
+                </button>
+              </div>
             </div>
           );
         })}
@@ -1265,11 +1458,12 @@ function WasteView({
     };
     setWaste((p) => [newRec, ...p]);
     setServings(1);
+    toast.warning(`${servings}x ${selectedMenu.name} logged as waste (${fmtP(estimatedLoss)})`);
   };
 
   const deleteWaste = (rec: WasteRec) => {
     // Re-credit ingredients
-    const menuItem = MENU_ITEMS.find((m) => m.name === rec.menuItem);
+    const menuItem = MENU_ITEMS.find((m) => m.name.toLowerCase() === rec.menuItem.toLowerCase());
     if (menuItem) {
       const restored = recreditIngredients(menuItem, rec.servingsWasted, inv);
       setInv(restored);
@@ -1774,7 +1968,7 @@ function CalculatorView({
 
         <button
           onClick={() => setShowAddIngredient(true)}
-          className="w-full mt-3 py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/30 hover:text-foreground transition-colors flex items-center justify-center gap-2"
+          className="w-full mt-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-sky-500 hover:text-sky-600 dark:hover:text-sky-400 rounded-xl text-sm font-semibold text-muted-foreground transition-colors flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
           + Add New Ingredient
@@ -2554,6 +2748,7 @@ export default function App() {
 
   return (
     <div className={dark ? "dark" : ""}>
+      <Toaster position="top-right" richColors />
       <div
         className="min-h-screen bg-background text-foreground flex overflow-hidden"
         style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}

@@ -37,6 +37,15 @@ const UNIT_ALIASES: Record<string, string> = {
   piece: "pcs",
   pcs: "pcs",
   pc: "pcs",
+  lbs: "lb",
+  lb: "lb",
+  pound: "lb",
+  pounds: "lb",
+  "pounds (lbs)": "lb",
+  pack: "pack",
+  packs: "pack",
+  box: "box",
+  boxes: "box",
 };
 
 /** Conversion factors to a base unit within each dimension */
@@ -44,9 +53,12 @@ const TO_BASE: Record<string, { base: string; factor: number }> = {
   kg: { base: "g", factor: 1000 },
   g: { base: "g", factor: 1 },
   mg: { base: "g", factor: 0.001 },
+  lb: { base: "g", factor: 453.59237 },
   l: { base: "ml", factor: 1000 },
   ml: { base: "ml", factor: 1 },
   pcs: { base: "pcs", factor: 1 },
+  pack: { base: "pack", factor: 1 },
+  box: { base: "box", factor: 1 },
 };
 
 /**

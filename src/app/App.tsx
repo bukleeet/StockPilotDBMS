@@ -341,7 +341,7 @@ function ContextTagBar({
           onClick={() => onChange(tag)}
           className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
             value === tag
-              ? "bg-sky-600 text-white shadow-xs"
+              ? "bg-sky-500 text-white shadow-xs"
               : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
@@ -374,6 +374,150 @@ function RoleBadge({ role }: { role: Role }) {
         </>
       )}
     </span>
+  );
+}
+
+// ─── Custom Rich Chart Hover Tooltips ──────────────────────────────────
+function CategoryRevenueTooltip({ active, payload, sales }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const category = payload[0].name;
+  const value = payload[0].value;
+  const categorySales = (sales || []).filter((s: any) => s.category === category);
+
+  const itemMap: Record<string, { qty: number; total: number }> = {};
+  categorySales.forEach((s: any) => {
+    if (!itemMap[s.item]) itemMap[s.item] = { qty: 0, total: 0 };
+    itemMap[s.item].qty += s.quantitySold;
+    itemMap[s.item].total += s.quantitySold * s.unitPrice;
+  });
+
+  return (
+    <div className="bg-popover text-popover-foreground border border-border shadow-xl rounded-xl p-3 text-xs max-w-xs space-y-2 z-50 pointer-events-none">
+      <div className="border-b border-border/60 pb-1.5 flex justify-between items-center gap-3">
+        <span className="font-bold text-sm text-sky-600 dark:text-sky-400">{category}</span>
+        <span className="font-bold">{fmtP(value)}</span>
+      </div>
+      <div>
+        <p className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider mb-1">Item Breakdown:</p>
+        {Object.keys(itemMap).length === 0 ? (
+          <p className="text-muted-foreground italic text-[11px]">No sales recorded</p>
+        ) : (
+          <div className="space-y-1">
+            {Object.entries(itemMap).slice(0, 5).map(([name, data]) => (
+              <div key={name} className="flex justify-between items-center text-[11px] gap-2">
+                <span className="truncate text-foreground font-medium">{name} ({data.qty} sold)</span>
+                <span className="font-semibold text-foreground">{fmtP(data.total)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InventoryCategoryTooltip({ active, payload, inv }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const category = payload[0].payload.name;
+  const value = payload[0].value;
+  const categoryItems = (inv || []).filter((i: any) => i.category === category);
+
+  return (
+    <div className="bg-popover text-popover-foreground border border-border shadow-xl rounded-xl p-3 text-xs max-w-xs space-y-2 z-50 pointer-events-none">
+      <div className="border-b border-border/60 pb-1.5 flex justify-between items-center gap-3">
+        <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400">{category}</span>
+        <span className="font-bold">{fmtP(value)}</span>
+      </div>
+      <div>
+        <p className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider mb-1">Stock Breakdown:</p>
+        <div className="space-y-1">
+          {categoryItems.slice(0, 5).map((item: any) => (
+            <div key={item.id} className="flex justify-between items-center text-[11px] gap-2">
+              <span className="truncate text-foreground font-medium">{item.name} ({item.quantity} {item.unit})</span>
+              <span className="font-semibold text-foreground">{fmtP(item.quantity * item.unitCost)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DailyTrendTooltip({ active, payload, sales, waste }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const dateStr = payload[0].payload.date;
+  const fullDate = payload[0].payload.fullDate || payload[0].payload.date;
+  const rev = payload.find((p: any) => p.dataKey === "Revenue")?.value || 0;
+  const wasteLoss = payload.find((p: any) => p.dataKey === "Waste" || p.dataKey === "Waste Loss")?.value || 0;
+
+  const dateSales = (sales || []).filter((s: any) => s.date.endsWith(dateStr) || s.date === fullDate);
+  const dateWaste = (waste || []).filter((w: any) => w.date.endsWith(dateStr) || w.date === fullDate);
+
+  return (
+    <div className="bg-popover text-popover-foreground border border-border shadow-xl rounded-xl p-3 text-xs max-w-xs space-y-2 z-50 pointer-events-none">
+      <div className="border-b border-border/60 pb-1.5">
+        <p className="font-bold text-sm text-foreground">{fullDate || dateStr}</p>
+        <div className="flex gap-3 text-[11px] mt-0.5 font-medium">
+          <span className="text-sky-600 dark:text-sky-400">Rev: {fmtP(rev)}</span>
+          {wasteLoss > 0 && <span className="text-rose-600 dark:text-rose-400">Waste: {fmtP(wasteLoss)}</span>}
+        </div>
+      </div>
+
+      {dateSales.length > 0 && (
+        <div>
+          <p className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider mb-1">Top Sales Breakdown:</p>
+          <div className="space-y-1">
+            {dateSales.slice(0, 3).map((s: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center text-[11px] gap-2">
+                <span className="truncate text-foreground font-medium">{s.item} ({s.quantitySold} sold)</span>
+                <span className="font-semibold text-foreground">{fmtP(s.quantitySold * s.unitPrice)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {dateWaste.length > 0 && (
+        <div className="pt-1 border-t border-border/40">
+          <p className="font-bold text-rose-600 dark:text-rose-400 uppercase text-[10px] tracking-wider mb-1">Reasons / Waste Loss:</p>
+          <div className="space-y-1">
+            {dateWaste.slice(0, 3).map((w: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center text-[11px] gap-2">
+                <span className="truncate text-foreground font-medium">{w.menuItem} ({w.servingsWasted} wasted)</span>
+                <span className="font-semibold text-rose-600 dark:text-rose-400">{fmtP(w.estimatedLoss)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SurplusDispositionTooltip({ active, payload, waste }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const route = payload[0].name;
+  const totalVal = payload[0].value;
+  const routeWaste = (waste || []).filter((w: any) => (w.dispositionRoute || "Disposed") === route);
+
+  return (
+    <div className="bg-popover text-popover-foreground border border-border shadow-xl rounded-xl p-3 text-xs max-w-xs space-y-2 z-50 pointer-events-none">
+      <div className="border-b border-border/60 pb-1.5 flex justify-between items-center gap-3">
+        <span className="font-bold text-sm text-foreground">{route}</span>
+        <span className="font-bold">{fmtP(totalVal)}</span>
+      </div>
+      <div>
+        <p className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider mb-1">Item Breakdown:</p>
+        <div className="space-y-1">
+          {routeWaste.slice(0, 5).map((w: any, idx: number) => (
+            <div key={idx} className="flex justify-between items-center text-[11px] gap-2">
+              <span className="truncate text-foreground font-medium">{w.menuItem} ({w.servingsWasted} servings)</span>
+              <span className="font-semibold text-foreground">{fmtP(w.estimatedLoss)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -581,8 +725,8 @@ function DashboardView({
             >
               <defs>
                 <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0284c7" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#0284c7" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gWaste" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#e11d48" stopOpacity={0.2} />
@@ -592,9 +736,9 @@ function DashboardView({
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `₱${v}`} width={52} />
-              <Tooltip formatter={(v: number) => fmtP(v)} />
+              <Tooltip content={<DailyTrendTooltip sales={sales} waste={waste} />} />
               <Legend iconType="circle" iconSize={8} />
-              <Area type="monotone" dataKey="Revenue" stroke="#0284c7" fill="url(#gRev)" strokeWidth={2} dot={{ r: 4, cursor: "pointer" }} />
+              <Area type="monotone" dataKey="Revenue" stroke="#0ea5e9" fill="url(#gRev)" strokeWidth={2} dot={{ r: 4, cursor: "pointer" }} />
               <Area type="monotone" dataKey="Waste Loss" stroke="#e11d48" fill="url(#gWaste)" strokeWidth={2} dot={{ r: 4, cursor: "pointer" }} />
             </AreaChart>
           </ResponsiveContainer>
@@ -1344,9 +1488,8 @@ function SalesView({
                 <button
                   onClick={() => addSale(menuItem)}
                   disabled={blockStockout && isOutOfStock}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 active:scale-95 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 active:scale-95 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <Plus className="w-3.5 h-3.5" />
                   +1
                 </button>
               </div>
@@ -1474,11 +1617,11 @@ function WasteView({
 
   // Disposition route icon/color mapping
   const routeStyles: Record<DispositionRoute, { bg: string; activeBg: string; text: string }> = {
-    "Staff Allocation": { bg: "bg-sky-50 dark:bg-sky-950/20", activeBg: "bg-sky-600 text-white font-semibold", text: "text-sky-800 dark:text-sky-300" },
-    "Charity / Community": { bg: "bg-slate-100 dark:bg-slate-800", activeBg: "bg-sky-600 text-white font-semibold", text: "text-slate-700 dark:text-slate-300" },
-    "Reused as Ingredient": { bg: "bg-slate-100 dark:bg-slate-800", activeBg: "bg-sky-600 text-white font-semibold", text: "text-slate-700 dark:text-slate-300" },
-    "Composted": { bg: "bg-slate-100 dark:bg-slate-800", activeBg: "bg-sky-600 text-white font-semibold", text: "text-slate-700 dark:text-slate-300" },
-    "Disposed": { bg: "bg-rose-50 dark:bg-rose-950/20", activeBg: "bg-rose-600 text-white font-bold", text: "text-rose-700 dark:text-rose-400" },
+    "Staff Allocation": { bg: "bg-sky-50 dark:bg-sky-950/20", activeBg: "bg-sky-500 text-white font-semibold shadow-xs", text: "text-sky-800 dark:text-sky-300" },
+    "Charity / Community": { bg: "bg-slate-100 dark:bg-slate-800", activeBg: "bg-sky-500 text-white font-semibold shadow-xs", text: "text-slate-700 dark:text-slate-300" },
+    "Reused as Ingredient": { bg: "bg-slate-100 dark:bg-slate-800", activeBg: "bg-sky-500 text-white font-semibold shadow-xs", text: "text-slate-700 dark:text-slate-300" },
+    "Composted": { bg: "bg-slate-100 dark:bg-slate-800", activeBg: "bg-sky-500 text-white font-semibold shadow-xs", text: "text-slate-700 dark:text-slate-300" },
+    "Disposed": { bg: "bg-rose-50 dark:bg-rose-950/20", activeBg: "bg-rose-600 text-white font-bold shadow-xs", text: "text-rose-700 dark:text-rose-400" },
   };
 
   return (
@@ -2182,7 +2325,7 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
   }, [waste]);
 
   const dispositionColors: Record<string, string> = {
-    "Staff Allocation": "#0284c7",
+    "Staff Allocation": "#0ea5e9",
     "Charity / Community": "#10b981",
     "Reused as Ingredient": "#8b5cf6",
     "Composted": "#f59e0b",
@@ -2241,9 +2384,9 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" />
                   <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `₱${v}`} width={52} />
-                  <Tooltip formatter={(v: number) => fmtP(v)} />
+                  <Tooltip content={<DailyTrendTooltip sales={sales} waste={waste} />} />
                   <Legend iconType="circle" iconSize={8} />
-                  <Bar dataKey="Revenue" fill="#0284c7" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Revenue" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Waste" fill="#e11d48" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -2258,7 +2401,7 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => fmtP(v)} />
+                  <Tooltip content={<CategoryRevenueTooltip sales={sales} />} />
                   <Legend iconType="circle" iconSize={8} />
                 </PieChart>
               </ResponsiveContainer>
@@ -2286,7 +2429,7 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
                       <Cell key={entry.name} fill={dispositionColors[entry.name] || "#94a3b8"} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => fmtP(v)} />
+                  <Tooltip content={<SurplusDispositionTooltip waste={waste} />} />
                   <Legend iconType="circle" iconSize={8} />
                 </PieChart>
               </ResponsiveContainer>
@@ -2299,7 +2442,7 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `₱${v}`} width={52} />
-                  <Tooltip formatter={(v: number) => fmtP(v)} />
+                  <Tooltip content={<InventoryCategoryTooltip inv={inv} />} />
                   <Bar dataKey="value" name="Value" radius={[4, 4, 0, 0]}>
                     {invByCategory.map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
@@ -2307,6 +2450,85 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Detailed Composition & Item Breakdown */}
+          <div className="bg-card rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="font-semibold text-base flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-sky-500" />
+                Detailed Composition Breakdown
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Itemized breakdown showing the exact dishes and ingredients that make up each report category
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Sales Composition by Dish */}
+              <div className="border border-border/70 rounded-xl p-4 bg-muted/10 space-y-3">
+                <h4 className="font-semibold text-xs text-sky-600 dark:text-sky-400 uppercase tracking-wide flex items-center justify-between">
+                  <span>Sales & Dish Composition</span>
+                  <span className="font-bold">{fmtP(totalRevenue)}</span>
+                </h4>
+                {Object.entries(
+                  sales.reduce((acc, s) => {
+                    const cat = s.category || "Unassigned";
+                    if (!acc[cat]) acc[cat] = {};
+                    if (!acc[cat][s.item]) acc[cat][s.item] = { qty: 0, total: 0 };
+                    acc[cat][s.item].qty += s.quantitySold;
+                    acc[cat][s.item].total += s.quantitySold * s.unitPrice;
+                    return acc;
+                  }, {} as Record<string, Record<string, { qty: number; total: number }>>)
+                ).map(([category, items]) => (
+                  <div key={category} className="space-y-1.5 pt-1">
+                    <p className="text-xs font-bold text-foreground bg-muted/40 px-2 py-1 rounded-md flex justify-between">
+                      <span>{category}</span>
+                      <span>{fmtP(Object.values(items).reduce((a, b) => a + b.total, 0))}</span>
+                    </p>
+                    <div className="space-y-1 pl-2">
+                      {Object.entries(items).map(([name, data]) => (
+                        <div key={name} className="flex items-center justify-between text-xs py-0.5">
+                          <span className="text-muted-foreground font-medium">{name} ({data.qty} sold)</span>
+                          <span className="font-semibold">{fmtP(data.total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Inventory Composition by Ingredient */}
+              <div className="border border-border/70 rounded-xl p-4 bg-muted/10 space-y-3">
+                <h4 className="font-semibold text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-wide flex items-center justify-between">
+                  <span>Inventory Ingredient Composition</span>
+                  <span className="font-bold">{fmtP(inv.reduce((a, i) => a + i.quantity * i.unitCost, 0))}</span>
+                </h4>
+                {Object.entries(
+                  inv.reduce((acc, item) => {
+                    const cat = item.category || "Unassigned";
+                    if (!acc[cat]) acc[cat] = [];
+                    acc[cat].push(item);
+                    return acc;
+                  }, {} as Record<string, InvItem[]>)
+                ).map(([category, items]) => (
+                  <div key={category} className="space-y-1.5 pt-1">
+                    <p className="text-xs font-bold text-foreground bg-muted/40 px-2 py-1 rounded-md flex justify-between">
+                      <span>{category}</span>
+                      <span>{fmtP(items.reduce((a, i) => a + i.quantity * i.unitCost, 0))}</span>
+                    </p>
+                    <div className="space-y-1 pl-2">
+                      {items.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-xs py-0.5">
+                          <span className="text-muted-foreground font-medium">{item.name} ({item.quantity} {item.unit})</span>
+                          <span className="font-semibold">{fmtP(item.quantity * item.unitCost)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -2486,20 +2708,17 @@ function SettingsView({
             <p className="text-xs text-muted-foreground">Block "+1" taps when key ingredients are at zero</p>
           </div>
           <button
+            type="button"
             onClick={() => setBlockStockout(!blockStockout)}
-            className="relative"
+            className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+              blockStockout ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"
+            }`}
           >
             <span
-              className={`w-9 h-5 rounded-full block transition-colors ${
-                blockStockout ? "bg-primary" : "bg-switch-background"
+              className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform ${
+                blockStockout ? "translate-x-4" : "translate-x-0"
               }`}
-            >
-              <span
-                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                  blockStockout ? "translate-x-4" : "translate-x-0.5"
-                }`}
-              />
-            </span>
+            />
           </button>
         </div>
 
@@ -2806,13 +3025,13 @@ export default function App() {
                 {role === "manager" ? "Manager Mode" : "Staff Mode"}
               </span>
               <span
-                className={`w-9 h-5 rounded-full relative transition-colors overflow-hidden ${
-                  role === "manager" ? "bg-primary" : "bg-switch-background"
+                className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  role === "manager" ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                    role === "manager" ? "translate-x-4" : "translate-x-0.5"
+                  className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform ${
+                    role === "manager" ? "translate-x-4" : "translate-x-0"
                   }`}
                 />
               </span>

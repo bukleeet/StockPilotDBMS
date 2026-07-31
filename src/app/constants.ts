@@ -13,7 +13,7 @@ import {
 // ─── Constants ──────────────────────────────────────────────────────────
 
 // Desaturated chart palette — sky/slate/emerald tones per professor directive
-export const CHART_COLORS = ["#0284c7", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#06b6d4"];
+export const CHART_COLORS = ["#0ea5e9", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#06b6d4"];
 export const UNITS = ["pieces", "grams", "kilograms", "milligrams", "milliliters", "liters", "pounds (lbs)", "packs", "boxes"];
 
 export const CONTEXT_TAGS = [

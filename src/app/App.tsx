@@ -1063,13 +1063,17 @@ function SuppliesView({
 
   const itemName = selectedItem === "__custom__" ? customItem : selectedItem;
 
+  const parsedQty = parseFloat(quantity);
+  const isQtyValid = !isNaN(parsedQty) && parsedQty > 0;
+  const isFormValid = itemName.trim().length > 0 && isQtyValid;
+
   const addRequest = () => {
-    if (!itemName.trim()) return;
+    if (!isFormValid) return;
     const newReq: SupplyReq = {
       id: uid(),
       date: today,
       item: itemName.trim(),
-      quantity: quantity ? parseFloat(quantity) : null,
+      quantity: parsedQty,
       unit,
       status: "pending",
       requestedByRole: role,
@@ -1181,8 +1185,8 @@ function SuppliesView({
 
           <button
             onClick={addRequest}
-            disabled={!itemName.trim()}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            disabled={!isFormValid}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Submit Request

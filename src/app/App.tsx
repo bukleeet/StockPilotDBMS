@@ -280,10 +280,12 @@ function KpiCard({
 
 function ExpiryBadge({ expiryDate }: { expiryDate: string }) {
   const days = daysUntilExpiry(expiryDate);
-  if (days <= 0) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-600 text-white shadow-xs">Expired</span>;
-  if (days <= 2) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-600 text-white shadow-xs">Expires in {days}d</span>;
-  if (days <= 7) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-500 text-white shadow-xs">Expires in {days}d</span>;
-  return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">Expires in {days}d</span>;
+  if (days <= 0) return <span className="text-xs px-2.5 py-0.5 rounded-full font-black bg-red-950 text-red-100 border border-red-700 shadow-xs animate-pulse">Expired</span>;
+  if (days === 1) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-red-600 text-white shadow-xs">Expires in 1d</span>;
+  if (days === 2) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-100 text-rose-800 border-2 border-rose-500 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-600 shadow-xs">Expires in 2d</span>;
+  if (days === 3) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-orange-100 text-orange-800 border-2 border-orange-500 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-600 shadow-xs">Expires in 3d</span>;
+  if (days <= 7) return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700 shadow-xs">Expires in {days}d</span>;
+  return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">Expires in {days}d</span>;
 }
 
 function StockAlertBanner({
@@ -339,7 +341,7 @@ function ContextTagBar({
           onClick={() => onChange(tag)}
           className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
             value === tag
-              ? "bg-primary text-primary-foreground shadow-sm"
+              ? "bg-sky-600 text-white shadow-xs"
               : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
@@ -357,7 +359,7 @@ function RoleBadge({ role }: { role: Role }) {
       className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
         role === "manager"
           ? "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
-          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+          : "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300"
       }`}
     >
       {role === "manager" ? (
@@ -542,7 +544,7 @@ function DashboardView({
         <KpiCard label="Inventory Value" value={fmtP(totalInvValue)} sub={`${inv.length} items tracked`} Icon={Package} iconBg="bg-sky-100 dark:bg-sky-950/40" iconColor="text-sky-600 dark:text-sky-400" />
         <KpiCard label="Today's Revenue" value={fmtP(todayRevenue)} sub={`${formattedDate} · Live`} Icon={DollarSign} iconBg="bg-emerald-100 dark:bg-emerald-950/40" iconColor="text-emerald-600 dark:text-emerald-400" />
         <KpiCard label="Waste Loss (7d)" value={fmtP(weekWasteLoss)} sub="Past 7 days" Icon={Trash2} iconBg="bg-rose-100 dark:bg-rose-950/40" iconColor="text-rose-600 dark:text-rose-400" />
-        <KpiCard label="Food Saved" value={fmtP(foodSavedValue)} sub="Staff / Charity / Reused" Icon={Heart} iconBg="bg-teal-100 dark:bg-teal-950/40" iconColor="text-teal-600 dark:text-teal-400" />
+        <KpiCard label="Food Saved" value={fmtP(foodSavedValue)} sub="Staff / Charity / Reused" Icon={Heart} iconBg="bg-sky-100 dark:bg-sky-950/40" iconColor="text-sky-600 dark:text-sky-400" />
         <KpiCard label="Expiring Soon" value={String(expiringSoon.length)} sub="Items within 3 days" Icon={AlertTriangle} iconBg="bg-amber-100 dark:bg-amber-950/40" iconColor="text-amber-600 dark:text-amber-400" />
       </div>
 
@@ -579,7 +581,7 @@ function DashboardView({
             >
               <defs>
                 <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0284c7" stopOpacity={0.2} />
+                  <stop offset="5%" stopColor="#0284c7" stopOpacity={0.15} />
                   <stop offset="95%" stopColor="#0284c7" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gWaste" x1="0" y1="0" x2="0" y2="1">
@@ -596,19 +598,6 @@ function DashboardView({
               <Area type="monotone" dataKey="Waste Loss" stroke="#e11d48" fill="url(#gWaste)" strokeWidth={2} dot={{ r: 4, cursor: "pointer" }} />
             </AreaChart>
           </ResponsiveContainer>
-
-          {/* Quick day buttons */}
-          <div className="flex gap-1.5 mt-3 pt-3 border-t border-border/50 flex-wrap">
-            {trendData.map((d) => (
-              <button
-                key={d.date}
-                onClick={() => setSelectedDrillDate(d.date)}
-                className="px-2 py-1 rounded-md bg-muted/60 text-muted-foreground hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-950/40 text-xs font-semibold transition-colors"
-              >
-                {d.label} 🔍
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className="bg-card rounded-xl border border-border p-5">
@@ -779,22 +768,34 @@ function InventoryView({
         {filtered.map((item) => {
           const low = item.quantity <= item.reorderPoint;
           const outOfStock = item.quantity <= 0;
+          const daysLeft = daysUntilExpiry(item.expiryDate);
+          const expiringUrgent = daysLeft >= 0 && daysLeft <= 3;
+
+          let cardFlair = "border-border bg-card";
+          if (outOfStock) {
+            cardFlair = "border-2 border-rose-600 dark:border-rose-500 bg-rose-50/40 dark:bg-rose-950/30 shadow-sm";
+          } else if (low) {
+            cardFlair = "border-2 border-rose-500 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/20 shadow-xs";
+          } else if (expiringUrgent) {
+            cardFlair = "border-2 border-amber-400 dark:border-amber-600 bg-amber-50/15 dark:bg-amber-950/15 shadow-xs";
+          }
+
           return (
             <div
               key={item.id}
-              className={`bg-card rounded-xl border p-4 flex items-center gap-3 transition-colors ${low ? "border-amber-300 dark:border-amber-800" : "border-border"}`}
+              className={`rounded-xl p-4 flex items-center gap-3 transition-colors ${cardFlair}`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold">{item.name}</p>
                   <ExpiryBadge expiryDate={item.expiryDate} />
                   {outOfStock && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-700 text-white shadow-xs animate-pulse">
                       Out of Stock
                     </span>
                   )}
                   {!outOfStock && low && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-600 text-white shadow-xs">
                       Low Stock
                     </span>
                   )}
@@ -1473,11 +1474,11 @@ function WasteView({
 
   // Disposition route icon/color mapping
   const routeStyles: Record<DispositionRoute, { bg: string; activeBg: string; text: string }> = {
-    "Staff Allocation": { bg: "bg-blue-50 dark:bg-blue-950/20", activeBg: "bg-blue-500 dark:bg-blue-600", text: "text-blue-700 dark:text-blue-400" },
-    "Charity / Community": { bg: "bg-teal-50 dark:bg-teal-950/20", activeBg: "bg-teal-500 dark:bg-teal-600", text: "text-teal-700 dark:text-teal-400" },
-    "Reused as Ingredient": { bg: "bg-emerald-50 dark:bg-emerald-950/20", activeBg: "bg-emerald-500 dark:bg-emerald-600", text: "text-emerald-700 dark:text-emerald-400" },
-    "Composted": { bg: "bg-amber-50 dark:bg-amber-950/20", activeBg: "bg-amber-500 dark:bg-amber-600", text: "text-amber-700 dark:text-amber-400" },
-    "Disposed": { bg: "bg-rose-50 dark:bg-rose-950/20", activeBg: "bg-rose-500 dark:bg-rose-600", text: "text-rose-700 dark:text-rose-400" },
+    "Staff Allocation": { bg: "bg-sky-50 dark:bg-sky-950/20", activeBg: "bg-sky-600 text-white font-semibold", text: "text-sky-800 dark:text-sky-300" },
+    "Charity / Community": { bg: "bg-slate-100 dark:bg-slate-800", activeBg: "bg-sky-600 text-white font-semibold", text: "text-slate-700 dark:text-slate-300" },
+    "Reused as Ingredient": { bg: "bg-slate-100 dark:bg-slate-800", activeBg: "bg-sky-600 text-white font-semibold", text: "text-slate-700 dark:text-slate-300" },
+    "Composted": { bg: "bg-slate-100 dark:bg-slate-800", activeBg: "bg-sky-600 text-white font-semibold", text: "text-slate-700 dark:text-slate-300" },
+    "Disposed": { bg: "bg-rose-50 dark:bg-rose-950/20", activeBg: "bg-rose-600 text-white font-bold", text: "text-rose-700 dark:text-rose-400" },
   };
 
   return (
@@ -1629,7 +1630,7 @@ function WasteView({
                       {rec.dispositionRoute && (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           (FOOD_SAVED_ROUTES as readonly string[]).includes(rec.dispositionRoute)
-                            ? "bg-teal-100 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400"
+                            ? "bg-sky-100 text-sky-800 dark:bg-sky-950/30 dark:text-sky-300"
                             : "bg-muted text-muted-foreground"
                         }`}>
                           {rec.dispositionRoute}
@@ -1733,7 +1734,7 @@ function CalculatorView({
         action={
           <button
             onClick={resetAll}
-            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-semibold hover:bg-accent transition-colors whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2 border border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300 rounded-lg text-sm font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors whitespace-nowrap"
           >
             <RotateCcw className="w-4 h-4" />
             Reset All
@@ -1744,7 +1745,7 @@ function CalculatorView({
       {/* Step 1: Enter Your Costs & Settings */}
       <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center gap-3 mb-5">
-          <span className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
+          <span className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">1</span>
           <div>
             <h3 className="font-semibold text-sm">Enter Your Costs & Settings</h3>
             <p className="text-xs text-muted-foreground">Fill in the details below to calculate your pricing.</p>
@@ -1760,7 +1761,7 @@ function CalculatorView({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Chicken"
-              className="w-full px-3 py-2.5 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+              className="w-full px-3 py-2.5 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
             />
           </div>
 
@@ -1774,7 +1775,7 @@ function CalculatorView({
                   type="number"
                   value={qty}
                   onChange={(e) => setQty(e.target.value)}
-                  className="w-full px-3 py-2.5 pr-10 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  className="w-full px-3 py-2.5 pr-10 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">kg</span>
               </div>
@@ -1789,7 +1790,7 @@ function CalculatorView({
                   type="number"
                   value={cost}
                   onChange={(e) => setCost(e.target.value)}
-                  className="w-full px-3 py-2.5 pr-14 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  className="w-full px-3 py-2.5 pr-14 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">per kg</span>
               </div>
@@ -1807,7 +1808,7 @@ function CalculatorView({
                   type="number"
                   value={markup}
                   onChange={(e) => setMarkup(e.target.value)}
-                  className="w-full px-3 py-2.5 pr-8 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  className="w-full px-3 py-2.5 pr-8 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
               </div>
@@ -1822,7 +1823,7 @@ function CalculatorView({
                   type="number"
                   value={overhead}
                   onChange={(e) => setOverhead(e.target.value)}
-                  className="w-full px-3 py-2.5 pr-8 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  className="w-full px-3 py-2.5 pr-8 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
               </div>
@@ -1833,14 +1834,14 @@ function CalculatorView({
           {/* Need help? */}
           <button
             onClick={() => setShowHelp(!showHelp)}
-            className="flex items-center gap-2 text-sm text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
+            className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors font-medium"
           >
             <Info className="w-4 h-4" />
             Need help?
             {showHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
           {showHelp && (
-            <div className="bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800 rounded-xl p-4 text-sm text-sky-700 dark:text-sky-400 space-y-1">
+            <div className="bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl p-4 text-sm text-indigo-900 dark:text-indigo-300 space-y-1">
               <p>• <strong>Markup</strong> is how much extra you add to your total cost to set your selling price.</p>
               <p>• <strong>Overhead</strong> covers your business operating expenses.</p>
             </div>
@@ -1852,7 +1853,7 @@ function CalculatorView({
       <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <span className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</span>
+            <span className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">2</span>
             <div>
               <h3 className="font-semibold text-sm">Your Pricing Results</h3>
               <p className="text-xs text-muted-foreground">Results are automatically calculated based on your inputs.</p>
@@ -1860,7 +1861,7 @@ function CalculatorView({
           </div>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-semibold hover:bg-accent transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300 rounded-lg text-sm font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
           >
             <Printer className="w-4 h-4" />
             Export / Print
@@ -1888,9 +1889,9 @@ function CalculatorView({
             <span className="text-sm text-muted-foreground">Total Raw Cost</span>
             <span className="text-sm font-semibold">{fmtP(totalCost)}</span>
           </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm font-semibold text-sky-600 dark:text-sky-400">Selling Price (total)</span>
-            <span className="text-sm font-bold text-sky-600 dark:text-sky-400">{fmtP(sellingPriceTotal)}</span>
+          <div className="flex items-center justify-between py-2 bg-indigo-50/50 dark:bg-indigo-950/20 px-2 rounded-lg">
+            <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Selling Price (total)</span>
+            <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300">{fmtP(sellingPriceTotal)}</span>
           </div>
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-muted-foreground">Overhead ({overheadPct}%)</span>
@@ -1911,13 +1912,13 @@ function CalculatorView({
         </div>
 
         {/* Profit Margin highlight */}
-        <div className="mt-5 pt-5 border-t border-border flex items-center justify-between">
+        <div className="mt-5 p-4 bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl flex items-center justify-between">
           <div>
-            <p className="font-semibold text-sm text-sky-600 dark:text-sky-400">Profit Margin</p>
+            <p className="font-semibold text-sm text-indigo-900 dark:text-indigo-300">Profit Margin</p>
             <p className="text-xs text-muted-foreground">This is your profit as a percentage of your selling price.</p>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold text-sky-600 dark:text-sky-400">{profitMargin.toFixed(1)}%</span>
+            <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{profitMargin.toFixed(1)}%</span>
           </div>
         </div>
       </div>
@@ -1926,7 +1927,7 @@ function CalculatorView({
       <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <span className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
+            <span className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">3</span>
             <div>
               <h3 className="font-semibold text-sm">Manage Your Ingredients / Inventory</h3>
               <p className="text-xs text-muted-foreground">Click an ingredient to auto-fill the calculator above.</p>
@@ -1934,16 +1935,16 @@ function CalculatorView({
           </div>
           <button
             onClick={() => setShowAddIngredient(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300 rounded-lg text-sm font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Ingredient
           </button>
         </div>
 
-        <div className="bg-sky-50/50 dark:bg-sky-950/10 border border-sky-200/50 dark:border-sky-800/30 rounded-xl p-3 mb-4">
-          <p className="text-xs text-sky-700 dark:text-sky-400 flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+        <div className="bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl p-3 mb-4">
+          <p className="text-xs text-indigo-800 dark:text-indigo-300 flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
             Select "Use in Calculator" to automatically fill Item / Product Name and Unit Cost in Step 1. You can then adjust quantity, markup, and overhead as needed.
           </p>
         </div>
@@ -1958,7 +1959,7 @@ function CalculatorView({
               </div>
               <button
                 onClick={() => useInCalculator(item)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-100 text-sky-700 hover:bg-sky-200 dark:bg-sky-950/30 dark:text-sky-400 dark:hover:bg-sky-950/50 transition-colors whitespace-nowrap"
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40 transition-colors whitespace-nowrap"
               >
                 Use in Calculator
               </button>
@@ -1968,15 +1969,15 @@ function CalculatorView({
 
         <button
           onClick={() => setShowAddIngredient(true)}
-          className="w-full mt-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-sky-500 hover:text-sky-600 dark:hover:text-sky-400 rounded-xl text-sm font-semibold text-muted-foreground transition-colors flex items-center justify-center gap-2"
+          className="w-full mt-4 py-3 border-2 border-dashed border-indigo-200 text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-indigo-800 dark:text-indigo-400 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
           + Add New Ingredient
         </button>
 
-        <div className="mt-4 bg-muted/30 rounded-xl p-3 flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          <p className="text-xs text-muted-foreground">
+        <div className="mt-4 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl p-3 flex items-center gap-2 border border-indigo-100/50 dark:border-indigo-900/30">
+          <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <p className="text-xs text-indigo-800 dark:text-indigo-300">
             <strong>Tip:</strong> You can use these ingredient costs as your Unit Cost in the calculator above.
           </p>
         </div>
@@ -2181,9 +2182,9 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
   }, [waste]);
 
   const dispositionColors: Record<string, string> = {
-    "Staff Allocation": "#3b82f6",
-    "Charity / Community": "#14b8a6",
-    "Reused as Ingredient": "#059669",
+    "Staff Allocation": "#0284c7",
+    "Charity / Community": "#10b981",
+    "Reused as Ingredient": "#8b5cf6",
     "Composted": "#f59e0b",
     "Disposed": "#e11d48",
   };
@@ -2780,8 +2781,8 @@ export default function App() {
                 onClick={() => navigate(id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   view === id
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-accent hover:text-accent-foreground"
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />

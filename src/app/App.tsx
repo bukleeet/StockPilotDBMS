@@ -681,10 +681,10 @@ function DashboardView({
   }, [sales, waste, today]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 min-w-0">
       <PageHeader title="Dashboard" subtitle={`Your operation at a glance — ${formattedDate}`} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 min-[450px]:grid-cols-2 xl:grid-cols-5 gap-3.5 sm:gap-4 min-w-0">
         <KpiCard label="Inventory Value" value={fmtP(totalInvValue)} sub={`${inv.length} items tracked`} Icon={Package} iconBg="bg-sky-100 dark:bg-sky-950/40" iconColor="text-sky-600 dark:text-sky-400" />
         <KpiCard label="Today's Revenue" value={fmtP(todayRevenue)} sub={`${formattedDate} · Live`} Icon={DollarSign} iconBg="bg-emerald-100 dark:bg-emerald-950/40" iconColor="text-emerald-600 dark:text-emerald-400" />
         <KpiCard label="Waste Loss (7d)" value={fmtP(weekWasteLoss)} sub="Past 7 days" Icon={Trash2} iconBg="bg-rose-100 dark:bg-rose-950/40" iconColor="text-rose-600 dark:text-rose-400" />
@@ -707,9 +707,9 @@ function DashboardView({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5">
-          <div className="flex items-center justify-between mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0">
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-4 sm:p-5 min-w-0">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h3 className="font-semibold text-sm">Revenue vs. Waste Loss — Last 7 Days</h3>
             <span className="text-xs text-muted-foreground">Click any day for drill-down details</span>
           </div>
@@ -744,7 +744,7 @@ function DashboardView({
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-card rounded-xl border border-border p-5">
+        <div className="bg-card rounded-xl border border-border p-4 sm:p-5 min-w-0">
           <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
             Expiring Soon
@@ -767,11 +767,11 @@ function DashboardView({
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="bg-card rounded-xl border border-border overflow-hidden min-w-0">
         <div className="px-5 py-4 border-b border-border">
           <h3 className="font-semibold text-sm">Recent Sales</h3>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-w-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/30 border-b border-border">
@@ -3047,14 +3047,14 @@ export default function App() {
         </aside>
 
         {/* Main */}
-        <div className="flex-1 flex flex-col min-h-screen lg:ml-60">
+        <div className="flex-1 flex flex-col min-h-screen lg:ml-60 min-w-0">
           {/* Mobile header */}
-          <header className="lg:hidden h-14 flex items-center justify-between px-4 bg-card border-b border-border sticky top-0 z-10 shrink-0">
+          <header className="lg:hidden h-14 flex items-center justify-between px-4 bg-card border-b border-border sticky top-0 z-10 shrink-0 min-w-0">
             <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-accent transition-colors">
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm">StockPilot</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-bold text-sm truncate">StockPilot</span>
               <RoleBadge role={role} />
             </div>
             <button onClick={() => setDark(!dark)} className="p-2 rounded-lg hover:bg-accent transition-colors">
@@ -3062,7 +3062,7 @@ export default function App() {
             </button>
           </header>
 
-          <main className="flex-1 overflow-auto p-4 lg:p-6 lg:pt-8">
+          <main className="flex-1 overflow-x-hidden p-4 lg:p-6 lg:pt-8 min-w-0">
             {view === "dashboard" && <DashboardView inv={inv} sales={sales} waste={waste} supplyRequests={supplyRequests} role={role} />}
             {view === "inventory" && <InventoryView inv={inv} setInv={setInv} onRequestSupplies={() => navigate("supplies")} supplyRequests={supplyRequests} role={role} />}
             {view === "supplies" && <SuppliesView inv={inv} supplyRequests={supplyRequests} setSupplyRequests={setSupplyRequests} setInv={setInv} role={role} />}

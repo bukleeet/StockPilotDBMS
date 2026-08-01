@@ -27,13 +27,13 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['icon.svg', 'submark.svg'],
       manifest: {
         name: 'StockPilot Inventory',
         short_name: 'StockPilot',
         description: 'Offline-first inventory management for micro-canteens and small F&B operators',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        theme_color: '#0ea5e9',
+        background_color: '#0ea5e9',
         display: 'standalone',
         start_url: '/',
         icons: [

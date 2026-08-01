@@ -2015,7 +2015,7 @@ function CalculatorView({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-x-8 gap-y-3">
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-muted-foreground">Quantity</span>
             <span className="text-sm font-semibold">{quantity} kg</span>
@@ -2096,17 +2096,19 @@ function CalculatorView({
           </p>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {inv.map((item) => (
-            <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/20 transition-colors">
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <p className="font-medium text-sm">{item.name}</p>
-                <span className="text-xs text-muted-foreground">{item.unit}</span>
-                <span className="text-sm font-semibold">{fmtP(item.unitCost)}</span>
+            <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/20 transition-colors gap-2.5">
+              <div className="flex items-center justify-between sm:justify-start gap-4 flex-1 min-w-0">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate">{item.name}</p>
+                  <p className="text-xs text-muted-foreground">{item.unit}</p>
+                </div>
+                <span className="text-sm font-semibold tabular-nums shrink-0 sm:ml-auto">{fmtP(item.unitCost)}</span>
               </div>
               <button
                 onClick={() => useInCalculator(item)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40 transition-colors whitespace-nowrap"
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40 transition-colors whitespace-nowrap shrink-0 self-end sm:self-center"
               >
                 Use in Calculator
               </button>

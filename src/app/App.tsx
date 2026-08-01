@@ -339,11 +339,10 @@ function ContextTagBar({
         <button
           key={tag}
           onClick={() => onChange(tag)}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-            value === tag
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${value === tag
               ? "bg-sky-500 text-white shadow-xs"
               : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-          }`}
+            }`}
         >
           <Tag className="w-3 h-3 inline mr-1" />
           {tag}
@@ -356,11 +355,10 @@ function ContextTagBar({
 function RoleBadge({ role }: { role: Role }) {
   return (
     <span
-      className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-        role === "manager"
+      className={`text-xs px-2 py-0.5 rounded-full font-semibold ${role === "manager"
           ? "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
           : "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300"
-      }`}
+        }`}
     >
       {role === "manager" ? (
         <>
@@ -1694,11 +1692,10 @@ function WasteView({
                   <button
                     key={route}
                     onClick={() => setDispositionRoute(route)}
-                    className={`px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
-                      isActive
+                    className={`px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-left ${isActive
                         ? `${style.activeBg} text-white shadow-sm`
                         : `${style.bg} ${style.text} hover:opacity-80`
-                    } ${route === "Disposed" ? "col-span-2" : ""}`}
+                      } ${route === "Disposed" ? "col-span-2" : ""}`}
                   >
                     {route}
                   </button>
@@ -1775,11 +1772,10 @@ function WasteView({
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {rec.dispositionRoute && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          (FOOD_SAVED_ROUTES as readonly string[]).includes(rec.dispositionRoute)
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${(FOOD_SAVED_ROUTES as readonly string[]).includes(rec.dispositionRoute)
                             ? "bg-sky-100 text-sky-800 dark:bg-sky-950/30 dark:text-sky-300"
                             : "bg-muted text-muted-foreground"
-                        }`}>
+                          }`}>
                           {rec.dispositionRoute}
                         </span>
                       )}
@@ -2121,7 +2117,7 @@ function CalculatorView({
           className="w-full mt-4 py-3 border-2 border-dashed border-indigo-200 text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-indigo-800 dark:text-indigo-400 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          + Add New Ingredient
+          Add New Ingredient
         </button>
 
         <div className="mt-4 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl p-3 flex items-center gap-2 border border-indigo-100/50 dark:border-indigo-900/30">
@@ -2716,14 +2712,12 @@ function SettingsView({
           <button
             type="button"
             onClick={() => setBlockStockout(!blockStockout)}
-            className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-              blockStockout ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"
-            }`}
+            className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${blockStockout ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"
+              }`}
           >
             <span
-              className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform ${
-                blockStockout ? "translate-x-4" : "translate-x-0"
-              }`}
+              className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform ${blockStockout ? "translate-x-4" : "translate-x-0"
+                }`}
             />
           </button>
         </div>
@@ -2988,9 +2982,8 @@ export default function App() {
 
         {/* Sidebar */}
         <aside
-          className={`fixed inset-y-0 left-0 z-30 w-60 bg-card border-r border-border flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-            mobileOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className={`fixed inset-y-0 left-0 z-30 w-60 bg-card border-r border-border flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
         >
           <div className="h-14 flex items-center px-5 border-b border-border shrink-0">
             <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center mr-2.5 shrink-0">
@@ -3004,11 +2997,10 @@ export default function App() {
               <button
                 key={id}
                 onClick={() => navigate(id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  view === id
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${view === id
                     ? "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"
                     : "text-slate-600 dark:text-slate-400 hover:bg-accent hover:text-accent-foreground"
-                }`}
+                  }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 {label}
@@ -3031,14 +3023,12 @@ export default function App() {
                 {role === "manager" ? "Manager Mode" : "Staff Mode"}
               </span>
               <span
-                className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                  role === "manager" ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"
-                }`}
+                className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${role === "manager" ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"
+                  }`}
               >
                 <span
-                  className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform ${
-                    role === "manager" ? "translate-x-4" : "translate-x-0"
-                  }`}
+                  className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform ${role === "manager" ? "translate-x-4" : "translate-x-0"
+                    }`}
                 />
               </span>
             </button>

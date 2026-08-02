@@ -89,3 +89,7 @@ export interface StockAlert {
   available: number;
   unit: string;
 }
+
+export type SyncStatus = "synced" | "offline" | "syncing" | "error";
+
+export type Timeframe = "day" | "week" | "month" | "year";

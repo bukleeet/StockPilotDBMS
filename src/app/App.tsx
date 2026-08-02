@@ -41,6 +41,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  LogOut,
+  KeyRound,
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import {
@@ -57,6 +59,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Brush,
 } from "recharts";
 
 // ─── Local modules ──────────────────────────────────────────────────────
@@ -71,7 +74,13 @@ import type {
   ContextTag,
   DispositionRoute,
   StockAlert,
+  SyncStatus,
+  Timeframe,
 } from "./types";
+import { useAuth } from "./useAuth";
+import { useSync } from "./useSync";
+import { SignInView } from "./SignInView";
+import { changePin } from "./syncEngine";
 import {
   CHART_COLORS,
   UNITS,
@@ -639,16 +648,25 @@ function DashboardView({
   role: Role;
 }) {
   const [selectedDrillDate, setSelectedDrillDate] = useState<string | null>(null);
+  const [timeframe, setTimeframe] = useState<Timeframe>("week");
   const today = getTodayString();
   const totalInvValue = inv.reduce((a, i) => a + i.quantity * i.unitCost, 0);
   const todayRevenue = sales.filter((s) => s.date === today).reduce((a, s) => a + s.quantitySold * s.unitPrice, 0);
 
-  // Dynamic 7-day window
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
+  const timeframeDays = useMemo(() => {
+    switch (timeframe) {
+      case "day": return 1;
+      case "week": return 7;
+      case "month": return 30;
+      case "year": return 365;
+    }
+  }, [timeframe]);
 
-  const weekWasteLoss = waste.filter((w) => w.date >= sevenDaysAgoStr).reduce((a, w) => a + w.estimatedLoss, 0);
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - (timeframeDays - 1));
+  const startDateStr = startDate.toISOString().slice(0, 10);
+
+  const periodWasteLoss = waste.filter((w) => w.date >= startDateStr).reduce((a, w) => a + w.estimatedLoss, 0);
   const expiringSoon = inv.filter((i) => { const d = daysUntilExpiry(i.expiryDate); return d >= 0 && d <= 3; });
 
   // Food Saved KPI
@@ -664,7 +682,7 @@ function DashboardView({
 
   const trendData = useMemo(() => {
     const days: { date: string; label: string }[] = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = timeframeDays - 1; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().slice(0, 10);
@@ -676,7 +694,14 @@ function DashboardView({
       Revenue: parseFloat(sales.filter((s) => s.date === date).reduce((a, s) => a + s.quantitySold * s.unitPrice, 0).toFixed(2)),
       "Waste Loss": parseFloat(waste.filter((w) => w.date === date).reduce((a, w) => a + w.estimatedLoss, 0).toFixed(2)),
     }));
-  }, [sales, waste, today]);
+  }, [sales, waste, today, timeframeDays]);
+
+  const timeframeLabels: Record<Timeframe, string> = {
+    day: "Today",
+    week: "Past 7 days",
+    month: "Past 30 days",
+    year: "Past 365 days",
+  };
 
   return (
     <div className="space-y-5 min-w-0">
@@ -685,7 +710,7 @@ function DashboardView({
       <div className="grid grid-cols-1 min-[450px]:grid-cols-2 xl:grid-cols-5 gap-3.5 sm:gap-4 min-w-0">
         <KpiCard label="Inventory Value" value={fmtP(totalInvValue)} sub={`${inv.length} items tracked`} Icon={Package} iconBg="bg-sky-100 dark:bg-sky-950/40" iconColor="text-sky-600 dark:text-sky-400" />
         <KpiCard label="Today's Revenue" value={fmtP(todayRevenue)} sub={`${formattedDate} · Live`} Icon={DollarSign} iconBg="bg-emerald-100 dark:bg-emerald-950/40" iconColor="text-emerald-600 dark:text-emerald-400" />
-        <KpiCard label="Waste Loss (7d)" value={fmtP(weekWasteLoss)} sub="Past 7 days" Icon={Trash2} iconBg="bg-rose-100 dark:bg-rose-950/40" iconColor="text-rose-600 dark:text-rose-400" />
+        <KpiCard label={`Waste Loss (${timeframe === "day" ? "1d" : timeframe === "week" ? "7d" : timeframe === "month" ? "30d" : "1y"})`} value={fmtP(periodWasteLoss)} sub={timeframeLabels[timeframe]} Icon={Trash2} iconBg="bg-rose-100 dark:bg-rose-950/40" iconColor="text-rose-600 dark:text-rose-400" />
         <KpiCard label="Food Saved" value={fmtP(foodSavedValue)} sub="Staff / Charity / Reused" Icon={Heart} iconBg="bg-sky-100 dark:bg-sky-950/40" iconColor="text-sky-600 dark:text-sky-400" />
         <KpiCard label="Expiring Soon" value={String(expiringSoon.length)} sub="Items within 3 days" Icon={AlertTriangle} iconBg="bg-amber-100 dark:bg-amber-950/40" iconColor="text-amber-600 dark:text-amber-400" />
       </div>
@@ -708,10 +733,30 @@ function DashboardView({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0">
         <div className="lg:col-span-2 bg-card rounded-xl border border-border p-4 sm:p-5 min-w-0">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h3 className="font-semibold text-sm">Revenue vs. Waste Loss — Last 7 Days</h3>
-            <span className="text-xs text-muted-foreground">Click any day for drill-down details</span>
+            <div>
+              <h3 className="font-semibold text-sm">Revenue vs. Waste Loss</h3>
+              <p className="text-xs text-muted-foreground">Click any day for drill-down details</p>
+            </div>
+            
+            {/* Timeframe Selector */}
+            <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-lg border border-border">
+              {(["day", "week", "month", "year"] as Timeframe[]).map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setTimeframe(tf)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold capitalize transition-colors ${
+                    timeframe === tf
+                      ? "bg-sky-500 text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tf}
+                </button>
+              ))}
+            </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+
+          <ResponsiveContainer width="100%" height={timeframeDays > 7 ? 260 : 220}>
             <AreaChart
               data={trendData}
               margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
@@ -738,6 +783,17 @@ function DashboardView({
               <Legend iconType="circle" iconSize={8} />
               <Area type="monotone" dataKey="Revenue" stroke="#0ea5e9" fill="url(#gRev)" strokeWidth={2} dot={{ r: 4, cursor: "pointer" }} />
               <Area type="monotone" dataKey="Waste Loss" stroke="#e11d48" fill="url(#gWaste)" strokeWidth={2} dot={{ r: 4, cursor: "pointer" }} />
+
+              {/* Time-Series Sidescroller Brush for panning */}
+              {timeframeDays > 7 && (
+                <Brush
+                  dataKey="label"
+                  height={22}
+                  stroke="#0ea5e9"
+                  fill="var(--card)"
+                  tickFormatter={() => ""}
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -2269,6 +2325,7 @@ function generateRecommendations(inv: InvItem[], sales: SaleRec[], waste: WasteR
 // ─── Reports View ────────────────────────────────────────────────────────
 function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; waste: WasteRec[] }) {
   const [tab, setTab] = useState<"charts" | "ai">("charts");
+  const [timeframe, setTimeframe] = useState<Timeframe>("week");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiShown, setAiShown] = useState(false);
   const [recs, setRecs] = useState<Rec[]>([]);
@@ -2282,6 +2339,15 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
       setAiShown(true);
     }, 1800);
   };
+
+  const timeframeDays = useMemo(() => {
+    switch (timeframe) {
+      case "day": return 1;
+      case "week": return 7;
+      case "month": return 30;
+      case "year": return 365;
+    }
+  }, [timeframe]);
 
   const salesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
@@ -2298,7 +2364,7 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
   const today = getTodayString();
   const dailyData = useMemo(() => {
     const days: string[] = [];
-    for (let i = 7; i >= 0; i--) {
+    for (let i = timeframeDays - 1; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       days.push(d.toISOString().slice(0, 10));
@@ -2308,7 +2374,7 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
       Revenue: parseFloat(sales.filter((s) => s.date === d).reduce((a, s) => a + s.quantitySold * s.unitPrice, 0).toFixed(2)),
       Waste: parseFloat(waste.filter((w) => w.date === d).reduce((a, w) => a + w.estimatedLoss, 0).toFixed(2)),
     }));
-  }, [sales, waste, today]);
+  }, [sales, waste, today, timeframeDays]);
 
   const invByCategory = useMemo(() => {
     const map: Record<string, number> = {};
@@ -2380,8 +2446,28 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="bg-card rounded-xl border border-border p-5">
-              <h3 className="font-semibold text-sm mb-4">Daily Revenue vs. Waste Loss</h3>
-              <ResponsiveContainer width="100%" height={240}>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <h3 className="font-semibold text-sm">Daily Revenue vs. Waste Loss</h3>
+                
+                {/* Timeframe Selector */}
+                <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border">
+                  {(["day", "week", "month", "year"] as Timeframe[]).map((tf) => (
+                    <button
+                      key={tf}
+                      onClick={() => setTimeframe(tf)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-semibold capitalize transition-colors ${
+                        timeframe === tf
+                          ? "bg-sky-500 text-white shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {tf}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <ResponsiveContainer width="100%" height={timeframeDays > 7 ? 270 : 240}>
                 <BarChart data={dailyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" />
                   <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
@@ -2390,6 +2476,16 @@ function ReportsView({ inv, sales, waste }: { inv: InvItem[]; sales: SaleRec[]; 
                   <Legend iconType="circle" iconSize={8} />
                   <Bar dataKey="Revenue" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Waste" fill="#e11d48" radius={[4, 4, 0, 0]} />
+
+                  {timeframeDays > 7 && (
+                    <Brush
+                      dataKey="date"
+                      height={22}
+                      stroke="#0ea5e9"
+                      fill="var(--card)"
+                      tickFormatter={() => ""}
+                    />
+                  )}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -2623,6 +2719,10 @@ function SettingsView({
   dateOverride,
   onDateOverrideChange,
   isResettingRef,
+  token,
+  storeId,
+  role,
+  onLogout,
 }: {
   inv: InvItem[];
   sales: SaleRec[];
@@ -2637,11 +2737,50 @@ function SettingsView({
   dateOverride: string;
   onDateOverrideChange: (v: string) => void;
   isResettingRef: React.MutableRefObject<boolean>;
+  token: string | null;
+  storeId: string;
+  role: Role;
+  onLogout: () => void;
 }) {
   const [importStatus, setImportStatus] = useState<"idle" | "success" | "error">("idle");
   const [importError, setImportError] = useState("");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [oldPin, setOldPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinMessage, setPinMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleChangePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) {
+      setPinMessage({ type: "error", text: "Manager authentication token required." });
+      return;
+    }
+    if (!oldPin || !newPin) {
+      setPinMessage({ type: "error", text: "Please enter both current and new PIN." });
+      return;
+    }
+    if (newPin.length < 4) {
+      setPinMessage({ type: "error", text: "New PIN must be at least 4 digits." });
+      return;
+    }
+
+    setPinLoading(true);
+    setPinMessage(null);
+
+    try {
+      await changePin(token, storeId, oldPin, newPin);
+      setPinMessage({ type: "success", text: "Manager PIN updated successfully in MongoDB Atlas!" });
+      setOldPin("");
+      setNewPin("");
+    } catch (err: any) {
+      setPinMessage({ type: "error", text: err.message || "Failed to update PIN" });
+    } finally {
+      setPinLoading(false);
+    }
+  };
 
   const handleExport = async () => {
     const json = await exportAllData(inv, sales, waste, supplyRequests);
@@ -2726,7 +2865,6 @@ function SettingsView({
         <div>
           <p className="font-semibold text-sm mb-1">Manager Date Override (Testing)</p>
           <p className="text-xs text-muted-foreground mb-2">Override today's date for testing historical days. Leave blank for real-time.</p>
-          <div className="flex gap-2">
             <input
               type="date"
               value={dateOverride}
@@ -2743,7 +2881,6 @@ function SettingsView({
             )}
           </div>
         </div>
-      </div>
 
       {/* Data Management */}
       <div className="bg-card rounded-xl border border-border p-6 space-y-5">
@@ -2815,26 +2952,76 @@ function SettingsView({
         </div>
       </div>
 
-      {/* Storage Info */}
-      <div className="bg-card rounded-xl border border-border p-6 space-y-3">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Storage</h3>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Cloud className="w-4 h-4" />
-          <span>Data is stored locally on this device using IndexedDB</span>
+      {/* Manager Security (Change PIN) */}
+      {role === "manager" && (
+        <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-sky-500" />
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Manager Security & Security PIN</h3>
+          </div>
+
+          {pinMessage && (
+            <div className={`p-3 rounded-lg text-xs font-medium ${
+              pinMessage.type === "success"
+                ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                : "bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+            }`}>
+              {pinMessage.text}
+            </div>
+          )}
+
+          <form onSubmit={handleChangePin} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Current PIN</label>
+                <input
+                  type="password"
+                  value={oldPin}
+                  onChange={(e) => setOldPin(e.target.value)}
+                  placeholder="••••"
+                  maxLength={10}
+                  className="w-full px-3 py-2 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">New PIN</label>
+                <input
+                  type="password"
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value)}
+                  placeholder="••••"
+                  maxLength={10}
+                  className="w-full px-3 py-2 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={pinLoading}
+              className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+            >
+              {pinLoading ? "Updating..." : "Update Manager PIN"}
+            </button>
+          </form>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="text-center p-3 bg-muted/40 rounded-lg">
-            <p className="text-xs text-muted-foreground mb-1">Inventory</p>
-            <p className="font-bold text-sm">{inv.length} items</p>
+      )}
+
+      {/* Session Management */}
+      <div className="bg-card rounded-xl border border-border p-6 space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Session</h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-semibold text-sm">Sign Out / Switch Store</p>
+            <p className="text-xs text-muted-foreground">End session and return to store sign-in page</p>
           </div>
-          <div className="text-center p-3 bg-muted/40 rounded-lg">
-            <p className="text-xs text-muted-foreground mb-1">Sales</p>
-            <p className="font-bold text-sm">{sales.length} records</p>
-          </div>
-          <div className="text-center p-3 bg-muted/40 rounded-lg">
-            <p className="text-xs text-muted-foreground mb-1">Waste</p>
-            <p className="font-bold text-sm">{waste.length} records</p>
-          </div>
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 rounded-lg text-xs font-semibold transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Sign Out
+          </button>
         </div>
       </div>
 
@@ -2881,10 +3068,39 @@ export default function App() {
   const [sales, setSales] = useState<SaleRec[]>(INIT_SALES);
   const [waste, setWaste] = useState<WasteRec[]>(INIT_WASTE);
   const [supplyRequests, setSupplyRequests] = useState<SupplyReq[]>([]);
-  const [role, setRole] = useState<Role>("staff");
   const [loaded, setLoaded] = useState(false);
   const [blockStockout, setBlockStockout] = useState(false);
   const [dateOverrideState, setDateOverrideState] = useState("");
+
+  // Auth Hook
+  const { isAuthenticated, token, role, storeId, login, staffBypass, logout } = useAuth();
+
+  // Cloud Sync Callback
+  const handleCloudData = useCallback((cloudData: any) => {
+    if (cloudData.inventory?.length > 0) setInv(cloudData.inventory);
+    if (cloudData.sales?.length > 0) setSales(cloudData.sales);
+    if (cloudData.waste?.length > 0) setWaste(cloudData.waste);
+    if (cloudData.supplyRequests?.length > 0) setSupplyRequests(cloudData.supplyRequests);
+    if (cloudData.settings?.blockStockout !== undefined) setBlockStockout(cloudData.settings.blockStockout);
+    if (cloudData.settings?.dateOverride) {
+      setDateOverrideState(cloudData.settings.dateOverride);
+      setDateOverride(cloudData.settings.dateOverride);
+    }
+  }, []);
+
+  // Hybrid Sync Hook
+  const { syncStatus, lastSyncedAt, triggerSync } = useSync({
+    token,
+    storeId,
+    isAuthenticated,
+    role,
+    inv,
+    sales,
+    waste,
+    supplyRequests,
+    settings: { blockStockout, dateOverride: dateOverrideState || null },
+    onCloudData: handleCloudData,
+  });
 
   // Race condition fix: isResetting ref
   const isResettingRef = useRef(false);
@@ -2911,12 +3127,11 @@ export default function App() {
   useEffect(() => {
     (async () => {
       await initStorage();
-      const [savedInv, savedSales, savedWaste, savedSupplyReqs, savedRole, savedDark, savedSettings] = await Promise.all([
+      const [savedInv, savedSales, savedWaste, savedSupplyReqs, savedDark, savedSettings] = await Promise.all([
         loadInventory(),
         loadSales(),
         loadWaste(),
         loadSupplyRequests(),
-        loadRole(),
         loadDarkMode(),
         loadSettings(),
       ]);
@@ -2924,7 +3139,6 @@ export default function App() {
       if (savedSales) setSales(savedSales);
       if (savedWaste) setWaste(savedWaste);
       if (savedSupplyReqs) setSupplyRequests(savedSupplyReqs);
-      if (savedRole) setRole(savedRole);
       if (savedDark !== undefined) setDark(savedDark);
       if (savedSettings) {
         if (savedSettings.blockStockout !== undefined) setBlockStockout(savedSettings.blockStockout);
@@ -2942,7 +3156,6 @@ export default function App() {
   useEffect(() => { if (loaded && !isResettingRef.current) debouncedSaveSales(sales); }, [sales, loaded]);
   useEffect(() => { if (loaded && !isResettingRef.current) debouncedSaveWaste(waste); }, [waste, loaded]);
   useEffect(() => { if (loaded && !isResettingRef.current) debouncedSaveSupplyReqs(supplyRequests); }, [supplyRequests, loaded]);
-  useEffect(() => { if (loaded) saveRole(role); }, [role, loaded]);
   useEffect(() => { if (loaded) saveDarkMode(dark); }, [dark, loaded]);
 
   // ── Filter navigation items by role ──
@@ -2964,7 +3177,40 @@ export default function App() {
         setView("dashboard");
       }
     }
-  }, [role]);
+  }, [role, view]);
+
+  // Auth Gate: Render SignInView if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className={dark ? "dark" : ""}>
+        <SignInView onLoginSuccess={login} onStaffBypass={staffBypass} />
+      </div>
+    );
+  }
+
+  // Network Status Badge Component
+  const syncBadge = (
+    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border border-border bg-card shadow-2xs">
+      {syncStatus === "synced" && (
+        <>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-emerald-700 dark:text-emerald-400">Online (Synced)</span>
+        </>
+      )}
+      {syncStatus === "syncing" && (
+        <>
+          <RefreshCw className="w-3 h-3 text-sky-500 animate-spin" />
+          <span className="text-sky-700 dark:text-sky-400">Syncing...</span>
+        </>
+      )}
+      {(syncStatus === "offline" || syncStatus === "error") && (
+        <>
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span className="text-amber-700 dark:text-amber-400">Offline Mode</span>
+        </>
+      )}
+    </div>
+  );
 
   return (
     <div className={dark ? "dark" : ""}>
@@ -2985,11 +3231,14 @@ export default function App() {
           className={`fixed inset-y-0 left-0 z-30 w-60 bg-card border-r border-border flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"
             }`}
         >
-          <div className="h-14 flex items-center px-5 border-b border-border shrink-0">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center mr-2.5 shrink-0">
-              <Package className="w-3.5 h-3.5 text-primary-foreground" />
+          <div className="h-14 flex items-center justify-between px-5 border-b border-border shrink-0">
+            <div className="flex items-center">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center mr-2.5 shrink-0">
+                <Package className="w-3.5 h-3.5 text-primary-foreground" />
+              </div>
+              <span className="font-bold text-sm tracking-tight">StockPilot</span>
             </div>
-            <span className="font-bold text-sm tracking-tight">StockPilot</span>
+            {syncBadge}
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -3008,36 +3257,27 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Role toggle + Dark mode — Fixed toggle direction */}
-          <div className="p-3 border-t border-border shrink-0 space-y-1">
-            <button
-              onClick={() => setRole((r) => (r === "staff" ? "manager" : "staff"))}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-            >
-              {role === "manager" ? (
-                <Shield className="w-4 h-4 shrink-0" />
-              ) : (
-                <Users className="w-4 h-4 shrink-0" />
-              )}
-              <span className="flex-1 text-left">
-                {role === "manager" ? "Manager Mode" : "Staff Mode"}
-              </span>
-              <span
-                className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${role === "manager" ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"
-                  }`}
-              >
-                <span
-                  className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform ${role === "manager" ? "translate-x-4" : "translate-x-0"
-                    }`}
-                />
-              </span>
-            </button>
+          {/* Role badge + Dark mode + Logout */}
+          <div className="p-3 border-t border-border shrink-0 space-y-1.5">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 rounded-lg text-xs">
+              <RoleBadge role={role} />
+              <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[100px]">{storeId}</span>
+            </div>
+
             <button
               onClick={() => setDark(!dark)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
             >
               {dark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
               {dark ? "Light Mode" : "Dark Mode"}
+            </button>
+
+            <button
+              onClick={logout}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-medium"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              Sign Out / Switch
             </button>
           </div>
         </aside>
@@ -3053,9 +3293,12 @@ export default function App() {
               <span className="font-bold text-sm truncate">StockPilot</span>
               <RoleBadge role={role} />
             </div>
-            <button onClick={() => setDark(!dark)} className="p-2 rounded-lg hover:bg-accent transition-colors">
-              {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
+            <div className="flex items-center gap-2">
+              {syncBadge}
+              <button onClick={() => setDark(!dark)} className="p-2 rounded-lg hover:bg-accent transition-colors">
+                {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+            </div>
           </header>
 
           <main className="flex-1 overflow-x-hidden p-4 lg:p-6 lg:pt-8 min-w-0">
@@ -3073,6 +3316,7 @@ export default function App() {
                 blockStockout={blockStockout} setBlockStockout={handleBlockStockoutChange}
                 dateOverride={dateOverrideState} onDateOverrideChange={handleDateOverrideChange}
                 isResettingRef={isResettingRef}
+                token={token} storeId={storeId} role={role} onLogout={logout}
               />
             )}
           </main>

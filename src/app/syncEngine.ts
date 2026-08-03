@@ -3,7 +3,7 @@
  * Communicates with the Express backend for auth and data synchronization.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.PORT || 'http://localhost:5000';
 
 // ─── Auth API ───────────────────────────────────────────────────────────
 

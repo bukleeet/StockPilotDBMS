@@ -364,20 +364,20 @@ function ContextTagBar({
 function RoleBadge({ role }: { role: Role }) {
   return (
     <span
-      className={`text-xs px-2 py-0.5 rounded-full font-semibold ${role === "manager"
+      className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full font-semibold ${role === "manager"
           ? "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
-          : "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300"
+          : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
         }`}
     >
       {role === "manager" ? (
         <>
-          <Shield className="w-3 h-3 inline mr-0.5" />
-          Manager
+          <Shield className="w-3.5 h-3.5 shrink-0" />
+          <span>Manager</span>
         </>
       ) : (
         <>
-          <Users className="w-3 h-3 inline mr-0.5" />
-          Staff
+          <Users className="w-3.5 h-3.5 shrink-0" />
+          <span>Staff</span>
         </>
       )}
     </span>
@@ -3190,23 +3190,23 @@ export default function App() {
 
   // Network Status Badge Component
   const syncBadge = (
-    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border border-border bg-card shadow-2xs">
+    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-border bg-muted/60 shrink-0 whitespace-nowrap select-none">
       {syncStatus === "synced" && (
         <>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-emerald-700 dark:text-emerald-400">Online (Synced)</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span className="text-emerald-700 dark:text-emerald-400">Synced</span>
         </>
       )}
       {syncStatus === "syncing" && (
         <>
-          <RefreshCw className="w-3 h-3 text-sky-500 animate-spin" />
-          <span className="text-sky-700 dark:text-sky-400">Syncing...</span>
+          <RefreshCw className="w-2.5 h-2.5 text-sky-500 animate-spin shrink-0" />
+          <span className="text-sky-700 dark:text-sky-400">Syncing</span>
         </>
       )}
       {(syncStatus === "offline" || syncStatus === "error") && (
         <>
-          <span className="w-2 h-2 rounded-full bg-amber-500" />
-          <span className="text-amber-700 dark:text-amber-400">Offline Mode</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+          <span className="text-amber-700 dark:text-amber-400">Offline</span>
         </>
       )}
     </div>
@@ -3231,12 +3231,12 @@ export default function App() {
           className={`fixed inset-y-0 left-0 z-30 w-60 bg-card border-r border-border flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"
             }`}
         >
-          <div className="h-14 flex items-center justify-between px-5 border-b border-border shrink-0">
-            <div className="flex items-center">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center mr-2.5 shrink-0">
+          <div className="h-14 flex items-center justify-between px-3.5 border-b border-border shrink-0 gap-2 min-w-0">
+            <div className="flex items-center gap-2 min-w-0 shrink">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
                 <Package className="w-3.5 h-3.5 text-primary-foreground" />
               </div>
-              <span className="font-bold text-sm tracking-tight">StockPilot</span>
+              <span className="font-bold text-sm tracking-tight truncate">StockPilot</span>
             </div>
             {syncBadge}
           </div>

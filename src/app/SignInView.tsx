@@ -34,23 +34,23 @@ export function SignInView({ onLoginSuccess, onStaffBypass }: SignInViewProps) {
   };
 
   return (
-    <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2 bg-background text-foreground" style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
-      {/* Left Panel: Auth Form */}
-      <div className="flex flex-col justify-between p-6 sm:p-10 lg:p-14 max-w-xl mx-auto w-full min-h-screen">
+    <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-12 bg-background text-foreground overflow-x-hidden" style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+      {/* Left Panel: Auth Form (Sleek 4/12 or 5/12 column ratio) */}
+      <div className="lg:col-span-5 xl:col-span-4 flex flex-col justify-between p-6 sm:p-10 lg:p-12 w-full max-w-md mx-auto min-h-screen box-border">
         {/* Top Header */}
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-sky-500 flex items-center justify-center shadow-md">
+          <div className="w-9 h-9 rounded-xl bg-sky-500 flex items-center justify-center shadow-md shrink-0">
             <Package className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <span className="font-bold text-lg tracking-tight">StockPilot</span>
-            <span className="text-[10px] uppercase font-bold text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-950/60 px-2 py-0.5 rounded-full ml-2">Cloud Sync</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-bold text-lg tracking-tight truncate">StockPilot</span>
+            <span className="text-[10px] uppercase font-bold text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-950/60 px-2 py-0.5 rounded-full shrink-0">Cloud Sync</span>
           </div>
         </div>
 
         {/* Form Container */}
-        <div className="my-auto py-8">
-          <div className="mb-8">
+        <div className="my-auto py-6 w-full min-w-0">
+          <div className="mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">Log in to your store</h1>
             <p className="text-sm text-muted-foreground">
               Enter your Manager PIN for full administration, or continue as staff for quick POS & sales entry.
@@ -58,11 +58,11 @@ export function SignInView({ onLoginSuccess, onStaffBypass }: SignInViewProps) {
           </div>
 
           {/* Social / OAuth Placeholders */}
-          <div className="space-y-2.5 mb-6">
+          <div className="space-y-2.5 mb-5 w-full">
             <button
               type="button"
               onClick={() => setError("Google OAuth is disabled for local demo. Please use Manager PIN or Staff Bypass.")}
-              className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-accent transition-colors flex items-center justify-center gap-3 text-sm font-medium shadow-xs"
+              className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-accent transition-colors flex items-center justify-center gap-3 text-sm font-medium shadow-xs box-border"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -70,29 +70,29 @@ export function SignInView({ onLoginSuccess, onStaffBypass }: SignInViewProps) {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
               </svg>
-              Sign in with Google
+              <span className="truncate">Sign in with Google</span>
             </button>
 
             <button
               type="button"
               onClick={() => setError("GitHub OAuth is disabled for local demo. Please use Manager PIN or Staff Bypass.")}
-              className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-accent transition-colors flex items-center justify-center gap-3 text-sm font-medium shadow-xs"
+              className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-accent transition-colors flex items-center justify-center gap-3 text-sm font-medium shadow-xs box-border"
             >
               <svg className="w-4 h-4 shrink-0 fill-current" viewBox="0 0 24 24">
                 <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
               </svg>
-              Sign in with GitHub
+              <span className="truncate">Sign in with GitHub</span>
             </button>
           </div>
 
-          <div className="relative my-6 flex items-center justify-center">
+          <div className="relative my-5 flex items-center justify-center">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
             <span className="relative bg-background px-3 text-xs uppercase font-semibold text-muted-foreground tracking-wider">
               Or with Store PIN
             </span>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 w-full">
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs font-medium flex items-center gap-2">
                 <Lock className="w-4 h-4 shrink-0 text-rose-500" />
@@ -109,7 +109,7 @@ export function SignInView({ onLoginSuccess, onStaffBypass }: SignInViewProps) {
                 value={storeId}
                 onChange={(e) => setStoreId(e.target.value)}
                 placeholder="default-store"
-                className="w-full px-3.5 py-2.5 bg-input-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-shadow"
+                className="w-full px-3.5 py-2.5 bg-input-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-shadow box-border"
               />
             </div>
 
@@ -126,21 +126,21 @@ export function SignInView({ onLoginSuccess, onStaffBypass }: SignInViewProps) {
                 onChange={(e) => setPin(e.target.value)}
                 placeholder="••••"
                 maxLength={10}
-                className="w-full px-3.5 py-2.5 bg-input-background border border-border rounded-xl text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-shadow"
+                className="w-full px-3.5 py-2.5 bg-input-background border border-border rounded-xl text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-shadow box-border"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-md shadow-sky-500/20 disabled:opacity-60"
+              className="w-full py-3 px-4 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-md shadow-sky-500/20 disabled:opacity-60 box-border"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <Shield className="w-4 h-4" />
-                  Sign In as Manager
+                  <Shield className="w-4 h-4 shrink-0" />
+                  <span>Sign In as Manager</span>
                 </>
               )}
             </button>
@@ -148,23 +148,25 @@ export function SignInView({ onLoginSuccess, onStaffBypass }: SignInViewProps) {
             <button
               type="button"
               onClick={() => onStaffBypass(storeId)}
-              className="w-full py-3 bg-accent/60 hover:bg-accent text-foreground border border-border rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-accent/60 hover:bg-accent text-foreground border border-border rounded-xl text-sm font-medium transition-colors flex items-center justify-between gap-2 overflow-hidden box-border"
             >
-              <Users className="w-4 h-4 text-emerald-500" />
-              Continue as Staff (Sales & POS Only)
-              <ArrowRight className="w-4 h-4 ml-auto text-muted-foreground" />
+              <div className="flex items-center gap-2 min-w-0">
+                <Users className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span className="truncate">Continue as Staff (Sales & POS Only)</span>
+              </div>
+              <ArrowRight className="w-4 h-4 shrink-0 text-muted-foreground ml-1" />
             </button>
           </form>
         </div>
 
         {/* Footer */}
-        <p className="text-xs text-center text-muted-foreground">
+        <p className="text-xs text-center text-muted-foreground pt-4">
           StockPilot Offline-First DBMS · Hybrid MongoDB Cloud Sync
         </p>
       </div>
 
-      {/* Right Panel: Hero Banner (hidden lg:flex on mobile) */}
-      <div className="hidden lg:flex flex-col justify-between p-12 bg-slate-900 text-white relative overflow-hidden">
+      {/* Right Panel: Hero Banner (Right-Skewed 7/12 or 8/12 ratio) */}
+      <div className="hidden lg:flex lg:col-span-7 xl:col-span-8 flex-col justify-between p-12 bg-slate-900 text-white relative overflow-hidden">
         {/* Background Image snapshot */}
         <div
           className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-luminosity transform scale-105 transition-transform duration-1000"
@@ -179,22 +181,22 @@ export function SignInView({ onLoginSuccess, onStaffBypass }: SignInViewProps) {
         </div>
 
         {/* Center Hero Content */}
-        <div className="relative z-10 max-w-lg my-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/30 text-sky-300 text-xs font-medium">
+        <div className="relative z-10 max-w-xl my-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/20 border border-sky-400/30 text-sky-300 text-xs font-medium">
             <Sparkles className="w-3.5 h-3.5" />
             Real-time Recipe Deductions & Waste Analytics
           </div>
 
-          <h2 className="text-3xl xl:text-4xl font-extrabold tracking-tight text-white leading-tight">
+          <h2 className="text-3xl xl:text-5xl font-extrabold tracking-tight text-white leading-tight">
             Manage Your Food Service With Confidence.
           </h2>
 
-          <p className="text-slate-300 text-sm xl:text-base leading-relaxed">
+          <p className="text-slate-300 text-sm xl:text-base leading-relaxed max-w-lg">
             Real-time stock tracking, recipe-driven ingredient deductions, automated reorder alerts, and intelligent food waste reduction.
           </p>
 
           {/* Quote Card */}
-          <div className="p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-2">
+          <div className="p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-2 max-w-lg">
             <p className="text-xs italic text-slate-200 leading-relaxed">
               "Shift from a 'dispose immediately' mindset toward sustainable solutions — tracking every gram to protect operational margins."
             </p>

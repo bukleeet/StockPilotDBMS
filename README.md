@@ -1,6 +1,6 @@
-# StockPile - Smart Inventory & Waste Management System
+# StockPilot - Smart Inventory & Waste Management System
 
-A comprehensive, AI-powered food management system designed for school cafeterias and food service providers. StockPile optimizes inventory, reduces waste, and improves planning through intelligent analytics.
+A food inventory and waste management system for school cafeterias and food service providers. StockPilot helps teams track inventory, plan menus, monitor waste, and review operational reports.
 
 ## Features
 
@@ -57,8 +57,8 @@ A comprehensive, AI-powered food management system designed for school cafeteria
 
 1.  **Clone the repository**
     ```bash
-    git clone <repository-url>
-    cd STHCIUX-StockPileDBMS
+    git clone https://github.com/bukleeet/StockPilotDBMS.git
+    cd StockPilotDBMS
     ```
 
 2.  **Install dependencies**
@@ -83,7 +83,8 @@ A comprehensive, AI-powered food management system designed for school cafeteria
 - **Frontend**: React, TypeScript, Tailwind CSS
 - **Charts**: Recharts
 - **Icons**: Lucide React
-- **Local Storage**: HTML5 Web Storage API for data persistence
+- **Local Persistence**: IndexedDB, with a localStorage fallback
+- **Cloud Sync**: Express API, MongoDB Atlas, and JWT authentication
 
 ## Project Structure
 
@@ -102,11 +103,6 @@ src/
 
 ## Data Persistence
 
-All data is stored locally in the browser's `localStorage` using the following keys:
-- `stockpile-inventory`
-- `stockpile-sales`
-- `stockpile-waste`
-- `stockpile-role`
-- `stockpile-theme`
+StockPilot stores inventory, sales, waste, supply requests, role, theme, and settings in browser IndexedDB. It falls back to localStorage when IndexedDB is unavailable. Authenticated stores can synchronize their data with the MongoDB-backed API when online; local data remains available offline.
 
-Data can be exported and imported via the Settings page.
+Data can be exported and imported via the Settings page. To run cloud sync locally, copy `.env.example` to `.env` and configure the MongoDB URI and session secret before starting the API with `npm run server`.

@@ -13,7 +13,8 @@ function requireAuth(req, res, next) {
 
   try {
     const token = authHeader.split(' ')[1];
-    req.user = jwt.verify(token, process.env.SESSION_SECRET);
+    const secret = process.env.SESSION_SECRET || 'stockpile-secret-key';
+    req.user = jwt.verify(token, secret);
     next();
   } catch {
     return res.status(401).json({ error: 'Invalid or expired token' });

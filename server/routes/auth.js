@@ -24,9 +24,10 @@ router.post('/verify-pin', async (req, res) => {
       return res.status(401).json({ error: 'Invalid PIN' });
     }
 
+    const secret = process.env.SESSION_SECRET || 'stockpile-secret-key';
     const token = jwt.sign(
       { storeId, role: 'manager' },
-      process.env.SESSION_SECRET,
+      secret,
       { expiresIn: '12h' }
     );
 
@@ -49,7 +50,8 @@ router.post('/change-pin', async (req, res) => {
     const token = authHeader.split(' ')[1];
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.SESSION_SECRET);
+      const secret = process.env.SESSION_SECRET || 'stockpile-secret-key';
+      decoded = jwt.verify(token, secret);
     } catch {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
